@@ -83,29 +83,14 @@ The included Android project can be regenerated with `tauri android init`; prese
 
 The initial Android package is a **debug-signed ARM64 APK for personal testing**. For long-term releases, supply a stable Android signing keystore and configure the release signing environment described below. Keep that key: Android upgrades must use the same application ID and signing certificate. The original test keystore is retained in the task workspace at `work/toolchains/android-user/debug.keystore`; keep it for future debug-APK upgrades.
 
-## Android app updates
+## App updates
 
-Settings → App updates → Release source accepts an HTTPS manifest URL and an Ed25519 verification key (64 hexadecimal characters). There is deliberately no invented or preconfigured release host. Your activity records never go to this host.
+Both platforms have **Settings → App updates → Check for updates → Update to …**. Linux verifies and replaces its AppImage, then restarts. Android checks on Wi-Fi, verifies the download, and opens the system installer for approval. Android also checks on opening/resuming at most once daily.
 
-Automatic checks happen on Android while the app opens/resumes on Wi-Fi, at most once per day. Manual checks are also available. The downloader rejects redirects, unsigned/tampered manifests, mismatched APK hashes, and oversized downloads. The native installer additionally checks the APK’s application ID, increasing version code, and signing certificate. Installation uses Android’s normal approval flow. Canceling installation preserves existing records; an unavailable release host does not affect time recording.
+The default source is GitHub Releases in `shalmanau/Time-Control`. The tag-triggered workflow builds and signs both packages before publishing either one. See [UPDATES.md](UPDATES.md) for the one-time signing-secret setup, initial manual upgrade, and later releases.
 
-Generate a release-manifest signing key outside the repository:
+Private signing files stay in the ignored `.local/release-secrets/` directory on this machine and in GitHub Actions secrets. The original Android signing certificate is retained so existing personal-test installations can upgrade without uninstalling or removing records.
 
-```sh
-node scripts/release.mjs keygen /secure/location/time-ledger-release.pem
-```
-
-Sign a manifest after building and Android-signing the new APK. `VERSION_CODE` must equal the APK’s actual Android version code (inspect it with Android `aapt dump badging`):
-
-```sh
-node scripts/release.mjs manifest /secure/location/time-ledger-release.pem \
-  0.2.0 VERSION_CODE https://your-host.example/time-ledger.apk \
-  time-ledger.apk android.json
-```
-
-Upload the signed APK and manifest to the chosen HTTPS host, and enter the manifest URL and printed public key on your phone. The manifest-signing key is separate from the Android APK-signing key. Never publish either private key.
-
-Release builds may use `LEDGER_KEYSTORE`, `LEDGER_KEY_ALIAS`, `LEDGER_STORE_PASSWORD`, and `LEDGER_KEY_PASSWORD`. These are supplied by your environment or CI secret store, not saved in the source. An unsigned release is produced if no keystore is configured.
 
 ## Storage and validation status
 

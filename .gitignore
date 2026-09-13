@@ -20,3 +20,11 @@ src-tauri/gen/android/app/tauri.build.gradle.kts
 
 plugins/**/android/build/
 plugins/**/android/.gradle/
+
+# Release private material must stay outside source control.
+.release-secrets/
+*.pem
+*.key
+
+# Kotlin compiler sessions are generated locally.
+**/.kotlin/

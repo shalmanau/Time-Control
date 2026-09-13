@@ -26,7 +26,7 @@ import {
   ChartNoAxesColumnIncreasing,
 } from "lucide-react";
 import { android, command, mobile } from "./api";
-import type { Entry, Manifest, Report, Snapshot, SyncStatus } from "./types";
+import type { Entry, Report, Snapshot, SyncStatus } from "./types";
 import {
   bounds,
   clock,
@@ -36,6 +36,7 @@ import {
   inputAt,
   moveDate,
 } from "./time";
+import { checkForUpdate, installUpdate, type AvailableUpdate } from "./updates";
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 type Page = "log" | "statistics" | "settings";
 export default function App() {
@@ -51,8 +52,10 @@ export default function App() {
     [category, setCategory] = useState(""),
     [categoryName, setCategoryName] = useState(""),
     [editor, setEditor] = useState<Entry | "new" | null>(null),
-    [update, setUpdate] = useState<Manifest | null>(null),
-    [updateMessage, setUpdateMessage] = useState("");
+    [update, setUpdate] = useState<AvailableUpdate | null>(null),
+    [updateMessage, setUpdateMessage] = useState(""),
+    [updateBusy, setUpdateBusy] = useState(false),
+    [version, setVersion] = useState("");
   const latest = useRef<Snapshot | null>(null),
     androidRegistration = useRef(""),
     updateChecking = useRef(false);
@@ -69,34 +72,55 @@ export default function App() {
   const checkUpdate = useCallback(
     async (manual = false) => {
       const s = latest.current;
-      if (!s || updateChecking.current || !s.config.release_url) return;
+      if (!s || updateChecking.current) return;
       if (
         !manual &&
         (!android || Date.now() - s.config.last_update_check < 86400000)
       )
         return;
-      if (android) {
-        const wifi = await mobile<{ connected: boolean }>("wifi");
-        if (!wifi.connected) {
-          if (manual)
-            setUpdateMessage("Connect to Wi-Fi to check for updates.");
-          return;
-        }
-      }
       updateChecking.current = true;
+      setUpdateBusy(true);
+      if (manual) setUpdateMessage("Checking for updates…");
       try {
-        const m = await command<Manifest>("check_update");
+        const m = await checkForUpdate();
         setUpdate(m);
-        setUpdateMessage(`Version ${m.version} is available.`);
+        setUpdateMessage(
+          m ? `Version ${m.version} is available.` : "You’re up to date.",
+        );
       } catch (e) {
+        setUpdate(null);
         if (manual) setUpdateMessage(String(e));
       } finally {
         updateChecking.current = false;
+        setUpdateBusy(false);
         await refresh();
       }
     },
     [refresh],
   );
+  useEffect(() => {
+    void command<string>("app_version")
+      .then(setVersion)
+      .catch(() => {});
+  }, []);
+  async function performUpdate() {
+    if (!update || updateChecking.current) return;
+    updateChecking.current = true;
+    setUpdateBusy(true);
+    setUpdateMessage(
+      android
+        ? "Downloading and verifying update…"
+        : "Downloading and installing update. The app will restart…",
+    );
+    try {
+      setUpdateMessage(await installUpdate(update));
+    } catch (e) {
+      setUpdateMessage(String(e));
+    } finally {
+      updateChecking.current = false;
+      setUpdateBusy(false);
+    }
+  }
   useEffect(() => {
     let live = true;
     let running = false;
@@ -855,53 +879,39 @@ export default function App() {
               <div className="section-intro">
                 <h2>App updates</h2>
                 <p>
-                  Time Ledger 0.1.0
+                  Time Ledger {version}
                   {android ? " · Checks on Wi-Fi while the app is open." : ""}
                 </p>
               </div>
-              <UpdateSettings
-                key={`${data.config.release_url}:${data.config.release_key}`}
-                config={data.config}
-                busy={busy}
-                save={(url, key) =>
-                  act(() => command("configure_updates", { url, key }))
-                }
-              />
+              {android && (
+                <UpdateSettings
+                  key={`${data.config.release_url}:${data.config.release_key}`}
+                  config={data.config}
+                  busy={busy || updateBusy}
+                  save={(url, key) => {
+                    setUpdate(null);
+                    setUpdateMessage("");
+                    return act(() =>
+                      command("configure_updates", { url, key }),
+                    );
+                  }}
+                />
+              )}
               <div className="button-row update-actions">
                 <button
-                  disabled={busy || !data.config.release_url}
+                  disabled={busy || updateBusy}
                   onClick={() => void checkUpdate(true)}
                 >
                   <Download size={16} />
                   Check for updates
                 </button>
-                {update && android && (
+                {update && (
                   <button
                     className="primary"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(async () => {
-                        const wifi = await mobile<{ connected: boolean }>(
-                          "wifi",
-                        );
-                        if (!wifi.connected)
-                          throw new Error(
-                            "Connect to Wi-Fi to download the update.",
-                          );
-                        const path = await command<string>("download_update", {
-                          manifest: update,
-                        });
-                        await mobile("install", {
-                          path,
-                          versionCode: update.version_code,
-                        });
-                        setUpdateMessage(
-                          "Finish installing in the Android system dialog.",
-                        );
-                      })
-                    }
+                    disabled={busy || updateBusy}
+                    onClick={() => void performUpdate()}
                   >
-                    Install {update.version}
+                    {updateBusy ? "Updating…" : `Update to ${update.version}`}
                   </button>
                 )}
               </div>
@@ -967,7 +977,7 @@ function UpdateSettings({
           Release manifest URL
           <input
             type="url"
-            placeholder="https://…/android.json"
+            placeholder="Leave blank to use GitHub Releases"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />

@@ -1,3 +1,14 @@
+# Validation
+
+## Version 0.2.0 update support — 2026-09-13
+
+- 39 automated checks pass: 28 Rust core tests, 9 frontend tests, and 2 release-script tests. They cover HTTPS redirect restrictions, tampering, update dispatch on both platforms, Wi-Fi checks, failed downloads and retries, and version-specific signed release metadata.
+- Native Linux `cargo check` and release build pass. The new signed AppImage launches on Mint with an isolated data profile and initializes SQLite; its startup log is empty. The bundled public key verifies its signature; modifying its bytes fails signature verification.
+- Android release APK builds (ARM64, version 0.2.0, version code 2000). `apksigner verify` and 16 KiB ZIP alignment checks pass. Its signing-certificate SHA-256 matches the earlier 0.1.0 APK. This is a release-mode build using the existing personal-test signing identity.
+- `actionlint` validates the release workflow. Both signed platform builds must succeed before publication. GitHub Actions has not run this workflow yet: GitHub CLI authentication and repository-secret setup are still pending.
+- No Android phone or Fedora environment was available. Real-device installation approval/cancellation and full update/restart from a published GitHub release are not established by these local checks.
+- No application data schema or storage path changed. Existing records are not touched by the build or release workflow.
+
 # Validation — 13 September 2026
 
 ## Automated checks

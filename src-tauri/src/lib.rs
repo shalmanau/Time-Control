@@ -1,3 +1,5 @@
+#[cfg(not(target_os = "android"))]
+mod desktop_updates;
 use ledger_core::{
     now,
     sync::{Network, Peer, Status},
@@ -113,12 +115,31 @@ fn configure_updates(url: String, key: String, state: State<AppState>) -> Comman
     s.set_updates(url, key).map_err(err)?;
     Ok(s.snapshot())
 }
-#[tauri::command]
-async fn check_update(state: State<'_, AppState>) -> CommandResult<Manifest> {
-    let config = state.store.lock().map_err(err)?.snapshot().config;
+// Defaults are bundled with the app; custom sources remain installation-local.
+fn update_config(state: &AppState) -> CommandResult<ledger_core::Config> {
+    let mut config = state.store.lock().map_err(err)?.snapshot().config;
     if config.release_url.is_empty() {
-        return Err("Configure a release source first".into());
+        let defaults: serde_json::Value =
+            serde_json::from_str(include_str!("../../release-config.json")).map_err(err)?;
+        config.release_url = defaults["android_url"]
+            .as_str()
+            .ok_or("Missing release URL")?
+            .into();
+        config.release_key = defaults["android_public_key"]
+            .as_str()
+            .ok_or("Missing verification key")?
+            .into();
     }
+    Ok(config)
+}
+#[tauri::command]
+fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+#[tauri::command]
+async fn check_update(state: State<'_, AppState>) -> CommandResult<Option<Manifest>> {
+    let config = update_config(&state)?;
+
     state
         .store
         .lock()
@@ -142,7 +163,7 @@ async fn download_update(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> CommandResult<String> {
-    let config = state.store.lock().map_err(err)?.snapshot().config;
+    let config = update_config(&state)?;
     let directory = app.path().app_cache_dir().map_err(err)?.join("updates");
     tauri::async_runtime::spawn_blocking(move || {
         updates::download(
@@ -167,6 +188,10 @@ pub fn run() {
             let _ = w.set_focus();
         }
     }));
+    #[cfg(not(target_os = "android"))]
+    let builder = builder
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(desktop_updates::PendingUpdate::default());
     builder
         .plugin(tauri_plugin_nearby::init())
         .setup(|app| {
@@ -203,6 +228,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            app_version,
+            #[cfg(not(target_os = "android"))]
+            desktop_updates::check_desktop_update,
+            #[cfg(not(target_os = "android"))]
+            desktop_updates::install_desktop_update,
             snapshot,
             add_category,
             save_entry,

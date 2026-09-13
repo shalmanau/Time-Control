@@ -39,3 +39,11 @@ fn insecure_sources_are_rejected() {
     assert!(validate_endpoint("https://user:secret@example.org").is_err());
     assert!(validate_endpoint("file:///tmp/a").is_err());
 }
+
+#[test]
+fn signature_validation_does_not_trust_an_old_manifest() {
+    let (mut m, k) = signed();
+    ledger_core::updates::verify_signature(&m, &k).unwrap();
+    m.version = "0.0.1".into();
+    assert!(ledger_core::updates::verify_signature(&m, &k).is_err());
+}

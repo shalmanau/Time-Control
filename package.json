@@ -1,6 +1,6 @@
 {
   "name": "time-ledger",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,8 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:core": "cargo test -p ledger-core",
-    "format": "prettier --write src scripts *.json *.ts"
+    "format": "prettier --write src scripts *.json *.ts",
+    "test:release": "node --test scripts/release.test.mjs"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
