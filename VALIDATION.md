@@ -1,0 +1,30 @@
+# Validation — 13 September 2026
+
+## Automated checks
+
+- **26 Rust tests passed:** time validation; adjacency and overlaps; immutable seven-day editing deadlines; deletion and stale replicas; SQLite persistence; timer restart/handoff; concurrent timers; three-device merge convergence; later edits from lower-priority devices; duplicate categories; tampered operations and foreign groups; late delivery of valid edits; overnight/month boundaries; 23/25-hour days; Monday week boundaries; provisional timer statistics; concurrent and repeated admissions; preservation of sub-minute timer timestamps.
+- The Rust total includes **five real loopback transport tests**: encrypted synchronization, verified joining with matching codes and preservation of local entries, denial of an unapproved device, simultaneous two-way synchronization, and an interrupted connection.
+- **Four frontend date-utility tests passed:** group timezone conversion, DST day lengths, month/year navigation, and durations exceeding 24 hours.
+- TypeScript compilation and Vite production build passed.
+- npm dependency audit reported zero vulnerabilities after updating Vitest to 4.1.11.
+- The release-manifest helper generated a signature that verified independently with Node’s cryptography API. Rust tests validate trusted manifests and reject tampered signatures and rollback versions.
+
+## UI checks
+
+Chromium was used with a development-only HTTP bridge to the actual Rust core and a separate SQLite test database. Confirmed category creation, manual entry creation, expected duration/gaps, persistence of a running timer across a page reload, stopping that timer, statistics, editing an entry, and confirming deletion with updated totals. Checked the desktop layout at 1200×900 and the phone layout at 390×844. Screenshots under `screenshots/` contain synthetic test entries, which are not bundled into application storage.
+
+## Native checks
+
+- Linux Mint 22.3 x86_64: native Rust/Tauri compilation passed. The native executable launched with an isolated XDG profile and initialized SQLite and the WebKit view without startup errors. The final 79 MiB AppImage also launched normally with an isolated profile and no startup diagnostics.
+- Android: the ARM64 native library and APK compiled with SDK 36, NDK 27.2, and a full JDK 21. `apksigner verify` passed using APK signature schemes v2 and v3. The delivered APK was compacted, aligned to 16 KiB native-library pages, and re-signed with the same debug key; every original payload file was checked for byte-for-byte preservation. The package is `app.timeledger.personal`, version 0.1.0 / code 1000, minimum Android API 26, target API 36. It is debug-signed for personal testing. The compiled Tauri runtime has `custom-protocol` enabled, so the APK contains its interface and does not require the development server.
+
+## Not yet verified on devices
+
+No Android device was connected, and no Fedora environment was available. Therefore the following remain native device checks, rather than claimed results:
+
+- Running the APK on the user’s phone, and the AppImage on Fedora.
+- mDNS/Android NSD discovery and three-device synchronization on the user’s router, including its firewall and client-isolation behavior.
+- Wi-Fi-only update checks, the Android unknown-source permission screen, installation approval/cancellation, and a signed upgrade preserving the private database.
+- End-to-end update downloads from a real release host. No host, release-signing credentials, or published release was supplied; the endpoint and verification key are configured in Settings.
+
+Android installer and networking code compiles, and the shared transport and merge rules are tested; those facts do not substitute for the device checks above.

@@ -1,0 +1,11 @@
+[workspace]
+members = ["crates/ledger-core", "src-tauri", "plugins/tauri-plugin-nearby"]
+default-members = ["crates/ledger-core"]
+resolver = "2"
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+lto = "thin"
+strip = true

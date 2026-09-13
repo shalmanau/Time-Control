@@ -1,0 +1,35 @@
+[package]
+name = "ledger-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.37", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+uuid = { version = "1", features = ["v4"] }
+anyhow = "1"
+snow = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+rand = "0.8"
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+semver = "1"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+mdns-sd = "0.13"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+dev-bridge = []
+
+[[bin]]
+name = "dev-bridge"
+path = "src/bin/dev-bridge.rs"
+required-features = ["dev-bridge"]
