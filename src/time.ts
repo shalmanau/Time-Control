@@ -87,6 +87,8 @@ export function entryTimes(
           disambiguation: "reject",
         }).epochMilliseconds;
   return {
+    startMs: resolve(start, original?.start),
+    endMs: resolve(end, original?.end),
     start,
     end,
     endDay,

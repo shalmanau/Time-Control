@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
-  Check,
+  ArrowUp,
+  ArrowDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { android, command, mobile } from "./api";
 import { TimeBars, CategoryPie } from "./charts";
+import { CategoryPicker, ClockInput } from "./controls";
+import { timelineRows, normalizeClock } from "./timeline";
 import type { Entry, Report, Snapshot, SyncStatus } from "./types";
 import {
   bounds,
@@ -265,32 +268,25 @@ export default function App() {
     },
     { id: "settings" as Page, label: "Settings", icon: Settings2 },
   ];
-  const [dayStart, dayEnd] = bounds(date || today, zone),
-    visibleEnd = Math.max(dayStart, Math.min(dayEnd, now));
-  const rows: { start: number; end: number; entry?: Entry; timer?: boolean }[] =
-    [];
-  let cursor = dayStart;
-  const spans = [
-    ...data.entries.map((e) => ({
-      start: e.start,
-      end: e.end,
-      entry: e,
-      timer: false,
-    })),
-    ...(data.timer
-      ? [{ start: data.timer.start, end: now, entry: undefined, timer: true }]
-      : []),
-  ]
-    .filter((e) => e.end > dayStart && e.start < visibleEnd)
-    .sort((a, b) => a.start - b.start);
-  for (const span of spans) {
-    const start = Math.max(span.start, dayStart),
-      end = Math.min(span.end, visibleEnd);
-    if (start > cursor) rows.push({ start: cursor, end: start });
-    rows.push({ ...span, start, end });
-    cursor = end;
-  }
-  if (cursor < visibleEnd) rows.push({ start: cursor, end: visibleEnd });
+  const [dayStart, dayEnd] = bounds(date || today, zone);
+  const rows = timelineRows(data.entries, data.timer, date || today, zone, now);
+  const spans = rows.filter((row) => row.entry || row.timer);
+  const colors = data.category_colors || {};
+  const devicePriority =
+    data.device_priority ||
+    [...data.group.members]
+      .sort((a, b) => b.order - a.order || b.id.localeCompare(a.id))
+      .map((m) => m.id);
+  const saveColor = (category: string, color: string) =>
+    act(() => command("set_category_color", { category, color }));
+  const moveDevice = (index: number, delta: number) => {
+    const devices = [...devicePriority];
+    [devices[index], devices[index + delta]] = [
+      devices[index + delta],
+      devices[index],
+    ];
+    void act(() => command("set_device_priority", { devices }));
+  };
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -500,21 +496,15 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <select
-                    aria-label="Timer category"
+                  <CategoryPicker
+                    label="Timer category"
+                    categories={data.categories}
+                    colors={colors}
                     value={category}
-                    disabled={!data.categories.length}
-                    onChange={(e) => setCategory(e.target.value)}
-                  >
-                    {!data.categories.length && (
-                      <option value="">Category</option>
-                    )}
-                    {data.categories.map((c) => (
-                      <option value={c.id} key={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setCategory}
+                    saveColor={saveColor}
+                    disabled={busy || !data.categories.length}
+                  />
                   <button
                     disabled={busy || !category}
                     onClick={() =>
@@ -534,6 +524,7 @@ export default function App() {
                 zone={zone}
                 now={now}
                 names={names}
+                colors={colors}
                 timerCategory={data.timer?.category}
                 edit={setEditor}
               />
@@ -544,7 +535,7 @@ export default function App() {
                   <b>{duration(stats.recorded)}</b> recorded
                 </span>
                 <span>
-                  <b>{duration(stats.gaps)}</b> in gaps
+                  <b>{duration(stats.gaps)}</b> unmarked
                 </span>
                 <span className="entry-count">
                   {spans.length}{" "}
@@ -562,7 +553,7 @@ export default function App() {
                 <strong>{duration(stats.recorded)}</strong>
               </div>
               <div>
-                <span>Gaps</span>
+                <span>Unmarked</span>
                 <strong className="muted">{duration(stats.gaps)}</strong>
               </div>
               <div>
@@ -574,8 +565,8 @@ export default function App() {
               <div className="table-heading">
                 <h2>By category</h2>
               </div>
-              {stats.categories.length ? (
-                <CategoryPie report={stats} />
+              {stats.recorded + stats.gaps > 0 ? (
+                <CategoryPie report={stats} colors={colors} />
               ) : (
                 <div className="empty-state">
                   <ChartNoAxesColumnIncreasing size={30} />
@@ -601,8 +592,8 @@ export default function App() {
                 <span>{data.group.timezone}</span>
               </div>
               <div className="device-list">
-                {[...data.group.members]
-                  .sort((a, b) => b.order - a.order || b.id.localeCompare(a.id))
+                {devicePriority
+                  .map((id) => data.group.members.find((m) => m.id === id)!)
                   .map((m, i) => (
                     <div key={m.id} className="device">
                       <span className="device-icon">
@@ -623,7 +614,24 @@ export default function App() {
                           {i === 0 ? "Highest priority" : `Priority ${i + 1}`}
                         </span>
                       </div>
-                      <Check size={16} className="device-check" />
+                      <div className="priority-actions">
+                        <button
+                          className="icon-button"
+                          aria-label={`Raise priority of ${m.name}`}
+                          disabled={busy || i === 0}
+                          onClick={() => moveDevice(i, -1)}
+                        >
+                          <ArrowUp size={16} />
+                        </button>
+                        <button
+                          className="icon-button"
+                          aria-label={`Lower priority of ${m.name}`}
+                          disabled={busy || i === devicePriority.length - 1}
+                          onClick={() => moveDevice(i, 1)}
+                        >
+                          <ArrowDown size={16} />
+                        </button>
+                      </div>
                     </div>
                   ))}
               </div>
@@ -728,6 +736,7 @@ export default function App() {
           busy={busy}
           error={error}
           createCategory={createCategory}
+          saveColor={saveColor}
           close={() => {
             setError("");
             setEditor(null);
@@ -802,6 +811,7 @@ function EntryEditor({
   save,
   remove,
   createCategory,
+  saveColor,
 }: {
   entry: Entry | null;
   data: Snapshot;
@@ -813,6 +823,7 @@ function EntryEditor({
   save: (args: Record<string, unknown>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   createCategory: (name: string) => Promise<string | null>;
+  saveColor: (id: string, color: string) => Promise<boolean>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     zone = data.group.timezone;
@@ -849,12 +860,29 @@ function EntryEditor({
   let timeError = "";
   try {
     if (day && startTime && endTime) {
-      span = entryTimes(day, startTime, endTime, zone, entry, endDay);
+      span = entryTimes(
+        day,
+        normalizeClock(startTime),
+        normalizeClock(endTime),
+        zone,
+        entry,
+        endDay,
+      );
       if (span.duration <= 0) timeError = "End must be after start.";
+      else if (span.endMs > now) timeError = "End is in the future.";
+      else if (
+        data.entries.some(
+          (e) =>
+            e.id !== entry?.id &&
+            span!.startMs < e.end &&
+            span!.endMs > e.start,
+        ) ||
+        (data.timer && span.endMs > data.timer.start)
+      )
+        timeError = "This span overlaps an activity.";
     }
   } catch {
-    timeError =
-      "Choose valid times. Times skipped or repeated by a daylight-saving change cannot be entered manually.";
+    timeError = "Invalid time or daylight-saving transition.";
   }
   async function addCategory() {
     if (!newCategory.trim() || busy) return;
@@ -917,23 +945,18 @@ function EntryEditor({
             <X size={20} />
           </button>
         </div>
-        <label>
-          Category
-          <select
-            autoFocus
+        <div className="entry-category">
+          <span className="field-label">Category</span>
+          <CategoryPicker
+            categories={data.categories}
+            colors={data.category_colors || {}}
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            required
+            onChange={setCategory}
+            saveColor={saveColor}
             disabled={busy}
-          >
-            {data.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-            <option value="new">+ New category</option>
-          </select>
-        </label>
+            allowNew
+          />
+        </div>
         {category === "new" && (
           <div className="new-category-fields">
             <label>
@@ -970,25 +993,19 @@ function EntryEditor({
             onChange={(e) => setDay(e.target.value)}
           />
         </label>
-        <div className="time-fields">
-          <label>
-            Start
-            <input
-              required
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-          </label>
-          <label>
-            End
-            <input
-              required
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </label>
+        <div className="custom-time-fields">
+          <ClockInput
+            label="Start"
+            value={startTime}
+            onChange={setStartTime}
+            disabled={busy}
+          />
+          <ClockInput
+            label="End"
+            value={endTime}
+            onChange={setEndTime}
+            disabled={busy}
+          />
         </div>
         {endDay && (
           <label>
@@ -1009,9 +1026,7 @@ function EntryEditor({
           aria-live="polite"
         >
           Duration:{" "}
-          {span && !timeError
-            ? duration(span.duration, span.duration < 60000)
-            : "—"}
+          {span ? duration(span.duration, span.duration < 60000) : "—"}
           {span && span.endDay !== day ? ` · Ends ${span.endDay}` : ""}
         </p>
         {timeError && (
@@ -1024,6 +1039,52 @@ function EntryEditor({
           <p role="alert" className="form-error">
             {error || formError}
           </p>
+        )}
+        {span && span.duration > 0 && (
+          <div
+            className={`entry-preview ${timeError ? "has-error" : ""}`}
+            aria-label="Timeline preview"
+          >
+            {[...new Set([day, span.endDay])].map((previewDay) => {
+              const [start, end] = bounds(previewDay, zone);
+              const draft: Entry = {
+                id: entry?.id || "draft",
+                category,
+                start: span!.startMs,
+                end: span!.endMs,
+                created: entry?.created || now,
+              };
+              return (
+                <div key={previewDay}>
+                  <span className="field-label">
+                    {span!.endDay !== day ? dateLabel(previewDay) : "Preview"}
+                  </span>
+                  <TimeBars
+                    rows={timelineRows(
+                      data.entries,
+                      data.timer,
+                      previewDay,
+                      zone,
+                      now,
+                      draft,
+                    )}
+                    start={start}
+                    end={end}
+                    now={now}
+                    zone={zone}
+                    names={Object.fromEntries([
+                      ...data.categories.map((c) => [c.id, c.name]),
+                      ["new", "New category"],
+                    ])}
+                    colors={data.category_colors || {}}
+                    timerCategory={data.timer?.category}
+                    edit={() => {}}
+                    preview
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
         <div className="dialog-footer">
           {entry &&

@@ -36,7 +36,9 @@ describe("reporting date presentation", () => {
 
 describe("entry day and time fields", () => {
   it("keeps later end times on the selected day", () => {
-    expect(entryTimes("2026-09-12", "09:00", "10:30", "Europe/Minsk")).toEqual({
+    expect(
+      entryTimes("2026-09-12", "09:00", "10:30", "Europe/Minsk"),
+    ).toMatchObject({
       start: "2026-09-12T09:00",
       end: "2026-09-12T10:30",
       endDay: "2026-09-12",

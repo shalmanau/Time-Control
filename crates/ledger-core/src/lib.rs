@@ -5,7 +5,7 @@ use anyhow::{bail, ensure, Context, Result};
 use chrono::{DateTime, Datelike, Duration, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use rand::rngs::OsRng;
+use rand::{rngs::OsRng, Rng};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -166,6 +166,8 @@ pub struct Timer {
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 pub enum Change {
     Category(Category),
+    CategoryColor { id: String, color: String },
+    DevicePriority { devices: Vec<String> },
     Entry(Entry),
     Delete { id: String, created: i64 },
     Timer { id: String, timer: Option<Timer> },
@@ -174,6 +176,8 @@ impl Change {
     fn target(&self) -> String {
         match self {
             Self::Category(v) => format!("c:{}", v.id),
+            Self::CategoryColor { id, .. } => format!("color:{id}"),
+            Self::DevicePriority { .. } => "device-priority".into(),
             Self::Entry(v) => format!("e:{}", v.id),
             Self::Delete { id, .. } => format!("e:{id}"),
             Self::Timer { id, .. } => format!("t:{id}"),
@@ -223,6 +227,21 @@ impl Operation {
                 !c.name.trim().is_empty() && c.name.len() <= 80,
                 "Invalid category"
             ),
+            Change::CategoryColor { color, .. } => ensure!(
+                color.len() == 7
+                    && color.starts_with('#')
+                    && color[1..].bytes().all(|b| b.is_ascii_hexdigit()),
+                "Use a color in #RRGGBB format"
+            ),
+            Change::DevicePriority { devices } => ensure!(
+                !devices.is_empty()
+                    && devices.len() <= 64
+                    && devices.iter().collect::<BTreeSet<_>>().len() == devices.len()
+                    && devices
+                        .iter()
+                        .all(|id| group.members.iter().any(|m| &m.id == id)),
+                "Invalid device priority"
+            ),
             Change::Entry(e) => ensure!(
                 e.start >= 0
                     && e.start < e.end
@@ -269,6 +288,8 @@ struct Meta {
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Snapshot {
+    pub device_priority: Vec<String>,
+    pub category_colors: BTreeMap<String, String>,
     pub device_id: String,
     pub group: Group,
     pub categories: Vec<Category>,
@@ -532,7 +553,62 @@ impl Store {
         }
         Ok(())
     }
+    // Resolve ordering changes using immutable admission priority to avoid a
+    // circular dependency between the order and the operation choosing it.
+    fn device_priority(&self) -> Vec<String> {
+        let ops: Vec<_> = self
+            .operations
+            .iter()
+            .filter(|o| matches!(o.change, Change::DevicePriority { .. }))
+            .collect();
+        let winner = ops
+            .iter()
+            .filter(|a| !ops.iter().any(|b| after(b, a)))
+            .max_by_key(|o| (self.meta.group.priority(&o.author), o.id.clone()));
+        let chosen = match winner.map(|o| &o.change) {
+            Some(Change::DevicePriority { devices }) => devices.clone(),
+            _ => vec![],
+        };
+        let mut members = self.meta.group.members.clone();
+        members.sort_by_key(|m| std::cmp::Reverse((m.order, m.id.clone())));
+        let mut result: Vec<_> = members
+            .iter()
+            .filter(|m| !chosen.contains(&m.id))
+            .map(|m| m.id.clone())
+            .collect();
+        result.extend(
+            chosen
+                .into_iter()
+                .filter(|id| members.iter().any(|m| &m.id == id)),
+        );
+        result
+    }
+    pub fn set_device_priority(&mut self, devices: Vec<String>, at: i64) -> Result<()> {
+        ensure!(
+            devices.len() == self.meta.group.members.len(),
+            "Include every device exactly once"
+        );
+        self.append(vec![Change::DevicePriority { devices }], at)
+    }
+    pub fn set_category_color(&mut self, category: &str, color: &str, at: i64) -> Result<()> {
+        self.has_category(category)?;
+        self.append(
+            vec![Change::CategoryColor {
+                id: category.into(),
+                color: color.to_ascii_lowercase(),
+            }],
+            at,
+        )
+    }
     pub fn snapshot(&self) -> Snapshot {
+        let device_priority = self.device_priority();
+        let priority = |author: &str| {
+            device_priority.len()
+                - device_priority
+                    .iter()
+                    .position(|id| id == author)
+                    .unwrap_or(device_priority.len())
+        };
         let mut targets: BTreeMap<String, Vec<&Operation>> = BTreeMap::new();
         for op in &self.operations {
             targets.entry(op.change.target()).or_default().push(op);
@@ -542,7 +618,7 @@ impl Store {
             .filter_map(|ops| {
                 ops.iter()
                     .filter(|a| !ops.iter().any(|b| after(b, a)))
-                    .max_by_key(|o| (self.meta.group.priority(&o.author), o.id.clone()))
+                    .max_by_key(|o| (priority(&o.author), o.id.clone()))
                     .copied()
             })
             .collect();
@@ -569,6 +645,15 @@ impl Store {
                 true
             }
         });
+        let mut category_colors = BTreeMap::new();
+        for o in &winners {
+            if let Change::CategoryColor { id, color } = &o.change {
+                // Duplicate category names use the canonical category's color.
+                if categories.iter().any(|c| &c.id == id) {
+                    category_colors.insert(id.clone(), color.clone());
+                }
+            }
+        }
         let mut candidates: Vec<&Operation> = winners
             .into_iter()
             .filter(|o| {
@@ -578,9 +663,7 @@ impl Store {
                 )
             })
             .collect();
-        candidates.sort_by_key(|o| {
-            std::cmp::Reverse((self.meta.group.priority(&o.author), o.id.clone()))
-        });
+        candidates.sort_by_key(|o| std::cmp::Reverse((priority(&o.author), o.id.clone())));
         let mut spans: Vec<(i64, i64)> = vec![];
         let mut entries = vec![];
         let mut timer = None;
@@ -618,6 +701,8 @@ impl Store {
         }
         entries.sort_by_key(|e| e.start);
         Snapshot {
+            device_priority,
+            category_colors,
             device_id: self.meta.identity.id.clone(),
             group: self.meta.group.clone(),
             categories,
@@ -645,7 +730,21 @@ impl Store {
             id: id(),
             name: name.into(),
         };
-        self.append(vec![Change::Category(c.clone())], at)?;
+        let palette = [
+            "#b77340", "#90b341", "#40aab5", "#6b83c7", "#9270bc", "#bb6e92", "#bb645c", "#b79843",
+            "#579a79", "#728c9a", "#a47b60", "#7079b5",
+        ];
+        let color = palette[OsRng.gen_range(0..palette.len())].to_string();
+        self.append(
+            vec![
+                Change::Category(c.clone()),
+                Change::CategoryColor {
+                    id: c.id.clone(),
+                    color,
+                },
+            ],
+            at,
+        )?;
         Ok(c)
     }
     fn has_category(&self, category: &str) -> Result<()> {

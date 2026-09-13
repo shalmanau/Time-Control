@@ -28,6 +28,23 @@ fn add_category(name: String, state: State<AppState>) -> CommandResult<Snapshot>
     Ok(s.snapshot())
 }
 #[tauri::command]
+fn set_category_color(
+    category: String,
+    color: String,
+    state: State<AppState>,
+) -> CommandResult<Snapshot> {
+    let mut s = state.store.lock().map_err(err)?;
+    s.set_category_color(&category, &color, now())
+        .map_err(err)?;
+    Ok(s.snapshot())
+}
+#[tauri::command]
+fn set_device_priority(devices: Vec<String>, state: State<AppState>) -> CommandResult<Snapshot> {
+    let mut s = state.store.lock().map_err(err)?;
+    s.set_device_priority(devices, now()).map_err(err)?;
+    Ok(s.snapshot())
+}
+#[tauri::command]
 fn save_entry(
     id: Option<String>,
     category: String,
@@ -235,6 +252,8 @@ pub fn run() {
             desktop_updates::install_desktop_update,
             snapshot,
             add_category,
+            set_category_color,
+            set_device_priority,
             save_entry,
             delete_entry,
             start_timer,

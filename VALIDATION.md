@@ -1,5 +1,14 @@
 # Validation
 
+## Editable priorities, colors, and entry controls 0.3.0 — 2026-09-13
+
+- Device priority is a signed replicated setting, separate from signed admission records. Settings arrows reorder devices; current priority controls concurrent entry/color/timer conflicts and overlap selection. Concurrent priority-setting operations use causal ordering and immutable admission priority as a deterministic tie-breaker; new members start above the saved ordering.
+- Categories receive persisted random palette colors; color edits synchronize. Existing signed category operations and databases retain compatibility on upgrade, with stable fallback colors until edited. The new operation types require every syncing device to run 0.3.0 or later; older apps cannot read these operations.
+- Log and statistics explicitly include Unmarked time. The pie includes unmarked duration and computes shares against the entire elapsed reporting period.
+- Inline category search, creation, palette/hex color editing, custom hour/minute controls, a full-width day input, and live day-bar previews replace the native time/category pickers. Previews replace the edited entry, include other activities, and show both endpoint days for overnight/multi-day spans.
+- 31 Rust tests and 22 frontend tests pass, including three new persistence/merge tests and seven timeline, clock, and unmarked-pie checks. Native Linux checking and the frontend production build pass.
+- Chromium checks against an isolated SQLite profile cover 1200px desktop, 390px phone, and 320px narrow forms; category creation/color editing, manual entry save, unmarked statistics, overnight previews, dark mode, and priority-button ordering/persistence for three synthetic members. No personal records were used. Physical Android and Fedora validation remain unavailable.
+
 ## Minimal single-bar log 0.2.4 — 2026-09-13
 
 - [Release v0.2.4](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.4) is public. [GitHub Actions run 34769227817](https://github.com/shalmanau/Time-Control/actions/runs/34769227817) passed all 45 automated checks and both signed platform builds. Public Android and Linux update downloads and signatures were verified; Android version code is 2004.

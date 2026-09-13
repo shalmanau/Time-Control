@@ -1388,3 +1388,285 @@ button.day-segment:focus-visible {
     margin: auto;
   }
 }
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.entry-day {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.entry-day input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.device > .priority-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  margin-left: auto;
+  gap: 4px;
+}
+.category-picker {
+  position: relative;
+  min-width: 0;
+}
+.category-trigger {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  min-width: 0;
+  text-align: left;
+}
+.category-trigger > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.category-trigger > svg {
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.category-trigger > svg.is-open {
+  transform: rotate(180deg);
+}
+.color-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.category-menu {
+  padding: 10px;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  animation: picker-open 0.12s ease-out;
+}
+@keyframes picker-open {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.category-menu > input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--side);
+  border: 0;
+}
+.category-options {
+  max-height: 170px;
+  overflow-y: auto;
+  margin: 6px 0;
+}
+.category-options > button {
+  display: flex;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 9px;
+}
+.category-options > button[aria-selected="true"] {
+  background: var(--accent-soft);
+}
+.category-options > button span {
+  overflow-wrap: anywhere;
+  white-space: normal;
+  flex: 1;
+}
+.category-options > button svg {
+  flex-shrink: 0;
+}
+.no-categories {
+  display: block;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.new-category-option,
+.color-edit-toggle {
+  width: 100%;
+  border: 0;
+  background: none;
+  justify-content: flex-start;
+  font-size: 12px;
+}
+.color-edit-toggle {
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  justify-content: space-between;
+}
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding: 8px 0 12px;
+}
+.color-palette > button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 5px;
+}
+.color-palette > button[aria-pressed="true"] {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+.custom-color {
+  display: flex;
+  gap: 8px;
+}
+.custom-color input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+.log-controls > .category-picker {
+  margin-left: auto;
+  flex: 1;
+  max-width: 220px;
+}
+.log-controls .category-menu {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  right: 0;
+  width: min(300px, calc(100vw - 48px));
+  box-shadow: 0 8px 28px #00000012;
+}
+.custom-time-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  margin-top: 22px;
+}
+.clock-input {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.clock-input legend {
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0;
+  margin-bottom: 7px;
+}
+.clock-input:last-child legend {
+  text-align: right;
+  width: 100%;
+}
+.clock-digits {
+  display: flex;
+  gap: 14px;
+  padding: 4px 8px;
+  background: var(--side);
+  border-radius: 8px;
+}
+.clock-part {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.clock-part input {
+  padding: 6px 0;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  font-size: 30px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.clock-part > button {
+  display: flex;
+  min-height: 28px;
+  width: 100%;
+  padding: 2px;
+  border: 0;
+  color: var(--muted);
+  background: transparent;
+}
+.clock-colon {
+  position: absolute;
+  top: 50%;
+  right: -11px;
+  transform: translateY(-50%);
+  font-size: 24px;
+  color: var(--muted);
+}
+.entry-preview {
+  margin: 20px 0;
+}
+.entry-preview > div + div {
+  margin-top: 14px;
+}
+.entry-preview .time-bars {
+  padding-top: 0;
+}
+.entry-preview .day-track {
+  height: 32px;
+}
+.day-segment.is-draft {
+  z-index: 2;
+  box-shadow: inset 0 0 0 2px var(--text);
+  border-radius: 3px;
+}
+.has-error .day-segment.is-draft {
+  box-shadow: inset 0 0 0 2px var(--danger);
+}
+@media (max-width: 600px) {
+  .log-controls .category-trigger {
+    font-size: 12px;
+    padding: 8px;
+    gap: 5px;
+  }
+  .log-controls .category-trigger > span {
+    gap: 5px;
+  }
+  .custom-time-fields {
+    gap: 18px;
+  }
+  .clock-digits {
+    gap: 12px;
+    padding: 2px 5px;
+  }
+  .clock-part input {
+    font-size: 26px;
+  }
+  .clock-colon {
+    right: -10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .category-menu {
+    animation: none;
+  }
+  .category-trigger > svg {
+    transition: none;
+  }
+}

@@ -1,19 +1,16 @@
+import type { TimelineRow } from "./timeline";
 import type { Entry, Report } from "./types";
 import { clock, duration, local } from "./time";
 
 // IDs travel with categories during sync, so their colors remain consistent.
-export function categoryColor(id: string) {
+export const UNMARKED_COLOR = "#a4aaa2";
+export function categoryColor(id: string, colors: Record<string, string> = {}) {
+  if (colors[id]) return colors[id];
   let hash = 2166136261;
   for (const c of id) hash = Math.imul(hash ^ c.charCodeAt(0), 16777619);
   return `hsl(${(hash >>> 0) % 360} 48% 48%)`;
 }
 
-type TimelineRow = {
-  start: number;
-  end: number;
-  entry?: Entry;
-  timer?: boolean;
-};
 export function TimeBars({
   rows,
   start,
@@ -21,7 +18,9 @@ export function TimeBars({
   zone,
   now,
   names,
+  colors = {},
   timerCategory,
+  preview = false,
   edit,
 }: {
   rows: TimelineRow[];
@@ -30,6 +29,8 @@ export function TimeBars({
   zone: string;
   now: number;
   names: Record<string, string>;
+  colors?: Record<string, string>;
+  preview?: boolean;
   timerCategory?: string;
   edit: (entry: Entry) => void;
 }) {
@@ -52,7 +53,7 @@ export function TimeBars({
         {rows.map((row, index) => {
           const category =
             row.entry?.category || (row.timer ? timerCategory : undefined);
-          const name = category ? names[category] : "Gap";
+          const name = category ? names[category] : "Unmarked";
           const locked =
             !!row.entry && now >= row.entry.created + 7 * 24 * 3600000;
           const endLabel =
@@ -61,13 +62,15 @@ export function TimeBars({
               : row.timer
                 ? "Now"
                 : clock(row.end, zone);
-          const label = `${name}, ${clock(row.start, zone)}–${endLabel}, ${duration(row.end - row.start)}`;
+          const label = `${row.draft ? "Draft " : ""}${name}, ${clock(row.start, zone)}–${endLabel}, ${duration(row.end - row.start)}`;
           const style = {
             left: `${position(row.start)}%`,
             width: `${position(row.end) - position(row.start)}%`,
-            backgroundColor: category ? categoryColor(category) : undefined,
+            backgroundColor: category
+              ? categoryColor(category, colors)
+              : UNMARKED_COLOR,
           };
-          return row.entry ? (
+          return row.entry && !preview ? (
             <button
               key={row.entry.id}
               className="day-segment"
@@ -80,7 +83,7 @@ export function TimeBars({
           ) : (
             <span
               key={`${row.start}-${index}`}
-              className={`day-segment ${row.timer ? "is-running" : "is-gap"}`}
+              className={`day-segment ${row.draft ? "is-draft" : row.timer ? "is-running" : category ? "" : "is-gap"}`}
               style={style}
               aria-label={label}
               title={label}
@@ -88,31 +91,53 @@ export function TimeBars({
           );
         })}
       </div>
-      <ul className="timeline-legend" aria-label="Timeline categories">
-        {[
-          ...new Set(
-            rows.flatMap((row) => {
-              const category =
-                row.entry?.category || (row.timer ? timerCategory : undefined);
-              return category ? [category] : [];
-            }),
-          ),
-        ].map((category) => (
-          <li key={category}>
-            <i
-              style={{ background: categoryColor(category) }}
-              aria-hidden="true"
-            />
-            {names[category]}
-          </li>
-        ))}
-      </ul>
+      {!preview && (
+        <ul className="timeline-legend" aria-label="Timeline categories">
+          {[
+            ...new Set(
+              rows.flatMap((row) => {
+                const category =
+                  row.entry?.category ||
+                  (row.timer ? timerCategory : undefined);
+                return category ? [category] : [];
+              }),
+            ),
+          ].map((category) => (
+            <li key={category}>
+              <i
+                style={{ background: categoryColor(category, colors) }}
+                aria-hidden="true"
+              />
+              {names[category]}
+            </li>
+          ))}
+          {rows.some((row) => !row.entry && !row.timer) && (
+            <li>
+              <i style={{ background: UNMARKED_COLOR }} aria-hidden="true" />
+              Unmarked
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   );
 }
 
-export function CategoryPie({ report }: { report: Report }) {
-  const categories = report.categories.filter((c) => c.duration > 0);
+export function CategoryPie({
+  report,
+  colors = {},
+}: {
+  report: Report;
+  colors?: Record<string, string>;
+}) {
+  const categories = [
+    ...report.categories.filter((c) => c.duration > 0),
+    ...(report.gaps > 0
+      ? [{ id: "unmarked", name: "Unmarked", duration: report.gaps, share: 0 }]
+      : []),
+  ];
+  const color = (id: string) =>
+    id === "unmarked" ? UNMARKED_COLOR : categoryColor(id, colors);
   const total = categories.reduce((sum, c) => sum + c.duration, 0);
   let accumulated = 0;
   return (
@@ -121,9 +146,9 @@ export function CategoryPie({ report }: { report: Report }) {
         className="category-pie"
         viewBox="0 0 240 240"
         role="img"
-        aria-label="Category shares of recorded time"
+        aria-label="Time by category and unmarked time"
       >
-        <title>Recorded time by category</title>
+        <title>Time by category and unmarked time</title>
         {categories.map((c) => {
           const from = (accumulated / total) * 2 * Math.PI - Math.PI / 2;
           accumulated += c.duration;
@@ -131,13 +156,7 @@ export function CategoryPie({ report }: { report: Report }) {
           const label = `${c.name}: ${duration(c.duration)}, ${((c.duration / total) * 100).toFixed(1)}%`;
           if (categories.length === 1)
             return (
-              <circle
-                key={c.id}
-                cx="120"
-                cy="120"
-                r="112"
-                fill={categoryColor(c.id)}
-              >
+              <circle key={c.id} cx="120" cy="120" r="112" fill={color(c.id)}>
                 <title>{label}</title>
               </circle>
             );
@@ -146,7 +165,7 @@ export function CategoryPie({ report }: { report: Report }) {
           return (
             <path
               key={c.id}
-              fill={categoryColor(c.id)}
+              fill={color(c.id)}
               stroke="var(--bg)"
               strokeWidth="1.5"
               d={`M120,120 L${x(from)},${y(from)} A112,112 0 ${to - from > Math.PI ? 1 : 0},1 ${x(to)},${y(to)} Z`}
@@ -160,10 +179,7 @@ export function CategoryPie({ report }: { report: Report }) {
         {categories.map((c) => (
           <li key={c.id}>
             <span className="pie-category">
-              <i
-                style={{ background: categoryColor(c.id) }}
-                aria-hidden="true"
-              />
+              <i style={{ background: color(c.id) }} aria-hidden="true" />
               {c.name}
             </span>
             <span className="pie-values">

@@ -18,6 +18,10 @@ fn execute(s: &mut Store, name: &str, args: Value) -> Result<Value> {
         "add_category" => {
             s.add_category(&text("name")?, now())?;
         }
+        "set_category_color" => s.set_category_color(&text("category")?, &text("color")?, now())?,
+        "set_device_priority" => {
+            s.set_device_priority(serde_json::from_value(args["devices"].clone())?, now())?
+        }
         "save_entry" => {
             s.save_entry_local(
                 args["id"].as_str().map(String::from),

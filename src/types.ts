@@ -33,6 +33,8 @@ export interface Config {
   last_update_check: number;
 }
 export interface Snapshot {
+  device_priority: string[];
+  category_colors: Record<string, string>;
   device_id: string;
   group: Group;
   categories: Category[];

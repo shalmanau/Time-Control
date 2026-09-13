@@ -290,3 +290,88 @@ fn retrying_an_admission_is_idempotent() {
         serde_json::to_string(&again).unwrap()
     );
 }
+
+#[test]
+fn chosen_device_priority_controls_conflicts_and_survives_stale_sync() {
+    let (mut a, mut b, mut c) = group();
+    let category = cat(&mut a);
+    b.merge(a.replica()).unwrap();
+    c.merge(a.replica()).unwrap();
+    let ea = a
+        .save_entry(None, category.clone(), 100, 200, 1000)
+        .unwrap();
+    c.save_entry(None, category, 150, 250, 1000).unwrap();
+    let stale = c.replica();
+    let order = vec![a.identity().id, b.identity().id, c.identity().id];
+    b.set_device_priority(order.clone(), 1100).unwrap();
+    a.merge(b.replica()).unwrap();
+    a.merge(c.replica()).unwrap();
+    c.merge(a.replica()).unwrap();
+    b.merge(c.replica()).unwrap();
+    for s in [&a, &b, &c] {
+        assert_eq!(s.snapshot().device_priority, order);
+        assert_eq!(s.snapshot().entries, vec![ea.clone()]);
+        s.replica().group.validate().unwrap();
+    }
+    a.merge(stale).unwrap();
+    assert_eq!(a.snapshot().entries, vec![ea]);
+    assert!(a
+        .set_device_priority(vec![a.identity().id; 3], 1200)
+        .is_err());
+    assert!(a
+        .set_device_priority(vec!["unknown".into(); 3], 1200)
+        .is_err());
+}
+
+#[test]
+fn concurrent_priority_changes_converge_then_causal_change_wins() {
+    let (mut a, mut b, mut c) = group();
+    let first = vec![a.identity().id, b.identity().id, c.identity().id];
+    let second = vec![b.identity().id, c.identity().id, a.identity().id];
+    a.set_device_priority(first.clone(), 1000).unwrap();
+    c.set_device_priority(second.clone(), 1000).unwrap();
+    b.merge(a.replica()).unwrap();
+    b.merge(c.replica()).unwrap();
+    c.merge(a.replica()).unwrap();
+    a.merge(c.replica()).unwrap();
+    assert_eq!(a.snapshot().device_priority, second);
+    assert_eq!(b.snapshot().device_priority, second);
+    a.set_device_priority(first.clone(), 1100).unwrap();
+    c.merge(a.replica()).unwrap();
+    b.merge(c.replica()).unwrap();
+    assert_eq!(b.snapshot().device_priority, first);
+    // New members still start at the highest priority until reordered.
+    let d = store();
+    a.admit(d.identity().member()).unwrap();
+    assert_eq!(a.snapshot().device_priority[0], d.identity().id);
+}
+
+#[test]
+fn colors_and_priority_persist_and_color_edits_converge() {
+    let (mut a, mut b, mut c) = group();
+    let category = cat(&mut a);
+    let color = a.snapshot().category_colors[&category].clone();
+    assert!(color.starts_with('#') && color.len() == 7);
+    b.merge(a.replica()).unwrap();
+    c.merge(a.replica()).unwrap();
+    a.set_category_color(&category, "#ff0000", 1100).unwrap();
+    c.set_category_color(&category, "#0055FF", 1100).unwrap();
+    a.merge(c.replica()).unwrap();
+    b.merge(a.replica()).unwrap();
+    assert_eq!(b.snapshot().category_colors[&category], "#0055ff");
+    a.set_category_color(&category, "#009900", 1200).unwrap();
+    c.merge(a.replica()).unwrap();
+    assert_eq!(c.snapshot().category_colors[&category], "#009900");
+    assert!(a.set_category_color(&category, "url(bad)", 1200).is_err());
+    assert!(a.set_category_color("missing", "#112233", 1200).is_err());
+    let file = tempfile::NamedTempFile::new().unwrap();
+    let mut local = Store::open(file.path(), "Persist".into(), "UTC").unwrap();
+    let id = local.add_category("Rest", 1000).unwrap().id;
+    local.set_category_color(&id, "#123456", 1100).unwrap();
+    let order = vec![local.identity().id];
+    local.set_device_priority(order.clone(), 1200).unwrap();
+    drop(local);
+    let local = Store::open(file.path(), "Ignored".into(), "UTC").unwrap();
+    assert_eq!(local.snapshot().category_colors[&id], "#123456");
+    assert_eq!(local.snapshot().device_priority, order);
+}
