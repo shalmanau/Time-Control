@@ -1,13 +1,13 @@
 {
   "name": "time-ledger",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "tauri": "tauri",
-    "test": "vitest run",
+    "test": "vitest run src",
     "test:core": "cargo test -p ledger-core",
     "format": "prettier --write src scripts *.json *.ts",
     "test:release": "node --test scripts/release.test.mjs"
