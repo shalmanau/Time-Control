@@ -28,3 +28,6 @@ plugins/**/android/.gradle/
 
 # Kotlin compiler sessions are generated locally.
 **/.kotlin/
+
+.playwright-cli/
+output/playwright/

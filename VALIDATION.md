@@ -1,5 +1,13 @@
 # Validation
 
+## Entry form revision 0.2.2 — 2026-09-13
+
+- The category selector now lists saved categories plus “New category”; creation is in the entry dialog and no longer in Settings. The first entry can be opened before any categories exist.
+- Separate day and time controls infer the following day when the end clock is earlier. The form displays elapsed duration and the end date for overnight spans. Existing multi-day entries retain their explicit end day; precise timer timestamps remain unchanged on category-only edits.
+- Frontend build and native Linux type checking pass. All 15 frontend and 2 release-script tests pass, including six new date/entry cases covering midnight, year boundaries, equal times, DST, short timers, and multi-day entries.
+- Playwright browser checks at desktop and phone widths use an isolated SQLite development profile: created categories inside the form, saved 23:00–07:00 as eight hours, changed its category without changing its span, and checked Settings no longer offers category creation. This is browser validation, not Android device validation.
+
+
 ## Published version 0.2.1 — 2026-09-13
 
 - [GitHub Actions run 34761918753](https://github.com/shalmanau/Time-Control/actions/runs/34761918753) passed Linux, Android, and publication jobs. All 39 automated checks pass in CI. Vitest is restricted to `src` so Node's release tests run only with their own test runner.

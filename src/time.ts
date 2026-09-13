@@ -57,3 +57,39 @@ export function dateLabel(date: string, period = "day") {
     month: "long",
   });
 }
+
+// Convert the entry form's explicit day and clock fields into the local values
+// accepted by Rust. Calendar arithmetic keeps overnight entries correct at DST.
+export function entryTimes(
+  day: string,
+  startTime: string,
+  endTime: string,
+  zone: string,
+  original?: { start: number; end: number } | null,
+  explicitEndDay?: string,
+) {
+  const date = Temporal.PlainDate.from(day);
+  const startClock = Temporal.PlainTime.from(startTime);
+  const endClock = Temporal.PlainTime.from(endTime);
+  const endDay =
+    explicitEndDay ||
+    date
+      .add({
+        days: Temporal.PlainTime.compare(endClock, startClock) < 0 ? 1 : 0,
+      })
+      .toString();
+  const start = `${date}T${startTime}`;
+  const end = `${Temporal.PlainDate.from(endDay)}T${endTime}`;
+  const resolve = (value: string, previous?: number) =>
+    previous !== undefined && inputAt(previous, zone) === value
+      ? previous
+      : Temporal.PlainDateTime.from(value).toZonedDateTime(zone, {
+          disambiguation: "reject",
+        }).epochMilliseconds;
+  return {
+    start,
+    end,
+    endDay,
+    duration: resolve(end, original?.end) - resolve(start, original?.start),
+  };
+}

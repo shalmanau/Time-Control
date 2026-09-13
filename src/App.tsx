@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -34,6 +28,7 @@ import {
   dateLabel,
   duration,
   inputAt,
+  entryTimes,
   moveDate,
 } from "./time";
 import { checkForUpdate, installUpdate, type AvailableUpdate } from "./updates";
@@ -50,7 +45,6 @@ export default function App() {
     [sync, setSync] = useState<SyncStatus | null>(null),
     [busy, setBusy] = useState(false),
     [category, setCategory] = useState(""),
-    [categoryName, setCategoryName] = useState(""),
     [editor, setEditor] = useState<Entry | "new" | null>(null),
     [update, setUpdate] = useState<AvailableUpdate | null>(null),
     [updateMessage, setUpdateMessage] = useState(""),
@@ -231,18 +225,18 @@ export default function App() {
       setBusy(false);
     }
   }
-  async function addCategory(e: FormEvent) {
-    e.preventDefault();
-    const name = categoryName.trim();
-    if (!name) return;
+  async function createCategory(name: string): Promise<string | null> {
+    let id: string | null = null;
     await act(async () => {
-      const s = await command<Snapshot>("add_category", { name });
-      setCategory(
-        s.categories.find((c) => c.name.toLowerCase() === name.toLowerCase())!
-          .id,
+      const s = await command<Snapshot>("add_category", { name: name.trim() });
+      const created = s.categories.find(
+        (c) => c.name.toLowerCase() === name.trim().toLowerCase(),
       );
-      setCategoryName("");
+      if (!created) throw new Error("Could not create the category.");
+      id = created.id;
+      setCategory(created.id);
     });
+    return id;
   }
   if (!data)
     return (
@@ -301,21 +295,6 @@ export default function App() {
     cursor = end;
   }
   if (cursor < visibleEnd) rows.push({ start: cursor, end: visibleEnd });
-  const categoryForm = (
-    <form className="inline-form" onSubmit={addCategory}>
-      <input
-        aria-label="New category"
-        placeholder="New category name"
-        maxLength={80}
-        value={categoryName}
-        onChange={(e) => setCategoryName(e.target.value)}
-      />
-      <button disabled={busy || !categoryName.trim()} type="submit">
-        <Plus size={16} />
-        Add category
-      </button>
-    </form>
-  );
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -445,7 +424,7 @@ export default function App() {
               {page === "log" && (
                 <button
                   className="primary"
-                  disabled={!data.categories.length || busy}
+                  disabled={busy}
                   onClick={() => setEditor("new")}
                 >
                   <Plus size={18} />
@@ -540,12 +519,14 @@ export default function App() {
             {!data.categories.length ? (
               <section className="first-category">
                 <Layers3 size={26} />
-                <h2>Start with a category</h2>
+                <h2>Add your first activity</h2>
                 <p>
-                  Name something you spend time on. You can reuse it for every
-                  entry.
+                  Create a category as you add an entry. You can reuse it next
+                  time.
                 </p>
-                {categoryForm}
+                <button disabled={busy} onClick={() => setEditor("new")}>
+                  Add entry
+                </button>
               </section>
             ) : (
               <section
@@ -766,29 +747,9 @@ export default function App() {
               <div>
                 <p className="eyebrow">PREFERENCES</p>
                 <h1>Settings</h1>
-                <p className="subheading">
-                  Categories, connected devices, and app updates.
-                </p>
+                <p className="subheading">Connected devices and app updates.</p>
               </div>
             </header>
-            <section className="settings-section">
-              <div className="section-intro">
-                <h2>Categories</h2>
-                <p>
-                  Create once, use whenever you need. Categories are kept
-                  permanently.
-                </p>
-              </div>
-              <div className="category-list">
-                {data.categories.map((c) => (
-                  <div key={c.id}>
-                    <span className="category-dot" />
-                    {c.name}
-                  </div>
-                ))}
-              </div>
-              {categoryForm}
-            </section>
             <section className="settings-section">
               <div className="section-intro">
                 <h2>Device group</h2>
@@ -935,7 +896,11 @@ export default function App() {
           now={now}
           busy={busy}
           error={error}
-          close={() => setEditor(null)}
+          createCategory={createCategory}
+          close={() => {
+            setError("");
+            setEditor(null);
+          }}
           save={(args) =>
             act(async () => {
               await command("save_entry", args);
@@ -1005,6 +970,7 @@ function EntryEditor({
   close,
   save,
   remove,
+  createCategory,
 }: {
   entry: Entry | null;
   data: Snapshot;
@@ -1015,28 +981,58 @@ function EntryEditor({
   close: () => void;
   save: (args: Record<string, unknown>) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
+  createCategory: (name: string) => Promise<string | null>;
 }) {
   const dialog = useRef<HTMLDialogElement>(null),
     zone = data.group.timezone;
+  const initialStart = entry
+    ? inputAt(entry.start, zone)
+    : date === dateAt(now, zone)
+      ? inputAt(now - 3600000, zone)
+      : `${date}T09:00`;
+  const initialEnd = entry
+    ? inputAt(entry.end, zone)
+    : date === dateAt(now, zone)
+      ? inputAt(now, zone)
+      : `${date}T10:00`;
+  const inferredEndDay =
+    initialEnd.slice(11) < initialStart.slice(11)
+      ? moveDate(initialStart.slice(0, 10), 1)
+      : initialStart.slice(0, 10);
   const [category, setCategory] = useState(
-      entry?.category || data.categories[0]?.id || "",
+      entry?.category || data.categories[0]?.id || "new",
     ),
-    [start, setStart] = useState(
-      entry
-        ? inputAt(entry.start, zone)
-        : date === dateAt(now, zone)
-          ? inputAt(now - 3600000, zone)
-          : `${date}T09:00`,
-    ),
-    [end, setEnd] = useState(
-      entry
-        ? inputAt(entry.end, zone)
-        : date === dateAt(now, zone)
-          ? inputAt(now, zone)
-          : `${date}T10:00`,
+    [newCategory, setNewCategory] = useState(""),
+    [day, setDay] = useState(initialStart.slice(0, 10)),
+    [startTime, setStartTime] = useState(initialStart.slice(11)),
+    [endTime, setEndTime] = useState(initialEnd.slice(11)),
+    // Keep older multi-day entries editable without silently shortening them.
+    [endDay, setEndDay] = useState(
+      entry && initialEnd.slice(0, 10) !== inferredEndDay
+        ? initialEnd.slice(0, 10)
+        : "",
     ),
     [confirmDelete, setConfirmDelete] = useState(false),
     [formError, setFormError] = useState("");
+  let span: ReturnType<typeof entryTimes> | null = null;
+  let timeError = "";
+  try {
+    if (day && startTime && endTime) {
+      span = entryTimes(day, startTime, endTime, zone, entry, endDay);
+      if (span.duration <= 0) timeError = "End must be after start.";
+    }
+  } catch {
+    timeError =
+      "Choose valid times. Times skipped or repeated by a daylight-saving change cannot be entered manually.";
+  }
+  async function addCategory() {
+    if (!newCategory.trim() || busy) return;
+    const id = await createCategory(newCategory);
+    if (id) {
+      setCategory(id);
+      setNewCategory("");
+    }
+  }
   useEffect(() => {
     dialog.current?.showModal();
     return () => dialog.current?.close();
@@ -1063,7 +1059,15 @@ function EntryEditor({
         onSubmit={async (e) => {
           e.preventDefault();
           setFormError("");
-          if (!(await save({ id: entry?.id || null, category, start, end })))
+          if (!span || timeError || category === "new") return;
+          if (
+            !(await save({
+              id: entry?.id || null,
+              category,
+              start: span.start,
+              end: span.end,
+            }))
+          )
             setFormError(
               "Entry could not be saved. Check for overlapping or future times.",
             );
@@ -1090,34 +1094,101 @@ function EntryEditor({
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             required
+            disabled={busy}
           >
             {data.categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
+            <option value="new">+ New category</option>
           </select>
+        </label>
+        {category === "new" && (
+          <div className="new-category-fields">
+            <label>
+              New category name
+              <input
+                value={newCategory}
+                maxLength={80}
+                disabled={busy}
+                onChange={(e) => setNewCategory(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void addCategory();
+                  }
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={busy || !newCategory.trim()}
+              onClick={() => void addCategory()}
+            >
+              Create category
+            </button>
+          </div>
+        )}
+        <label className="entry-day">
+          Day
+          <input
+            required
+            type="date"
+            value={day}
+            max={dateAt(now, zone)}
+            onChange={(e) => setDay(e.target.value)}
+          />
         </label>
         <div className="time-fields">
           <label>
             Start
             <input
               required
-              type="datetime-local"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
             />
           </label>
           <label>
             End
             <input
               required
-              type="datetime-local"
-              value={end}
-              onChange={(e) => setEnd(e.target.value)}
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
             />
           </label>
         </div>
+        {endDay && (
+          <label>
+            End day
+            <input
+              required
+              type="date"
+              value={endDay}
+              min={day}
+              max={dateAt(now, zone)}
+              onChange={(e) => setEndDay(e.target.value)}
+            />
+          </label>
+        )}
+        <p
+          className="field-hint entry-duration"
+          role="status"
+          aria-live="polite"
+        >
+          Duration:{" "}
+          {span && !timeError
+            ? duration(span.duration, span.duration < 60000)
+            : "—"}
+          {span && span.endDay !== day ? ` · Ends ${span.endDay}` : ""}
+        </p>
+        {timeError && (
+          <p className="form-error" role="alert">
+            {timeError}
+          </p>
+        )}
         <p className="field-hint">
           {zone.replaceAll("_", " ")} ·{" "}
           {entry
@@ -1155,7 +1226,9 @@ function EntryEditor({
             </button>
             <button
               className="primary"
-              disabled={busy || !category}
+              disabled={
+                busy || !category || category === "new" || !span || !!timeError
+              }
               type="submit"
             >
               {busy ? "Saving…" : entry ? "Save changes" : "Add entry"}
