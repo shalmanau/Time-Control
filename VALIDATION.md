@@ -2,9 +2,11 @@
 
 ## Horizontal timelines and pie statistics 0.2.3 — 2026-09-13
 
+- [Release v0.2.3](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.3) is public. [GitHub Actions run 34766030542](https://github.com/shalmanau/Time-Control/actions/runs/34766030542) passed all 45 checks and both signed platform builds. Public update downloads and signatures were verified for both platforms; Android version code is 2003. The published AppImage also launched on Mint with an isolated SQLite profile and an empty startup log.
+
 - Timeline entries use thick horizontal bars positioned on the day scale, with neutral gaps and stable category colors shared with statistics. Editable bars open the existing entry form.
 - Daily, weekly, and monthly statistics use a pie chart with category durations and percentages in a text legend.
-- Production frontend build and 15 frontend tests pass. Browser checks using isolated SQLite sample records cover 1200×900 desktop and 390×844 phone layouts, chart rendering, period switching, and entry editing. Browser checks do not establish Android or Fedora device compatibility.
+- Production frontend build and 15 frontend tests pass. Browser checks using isolated SQLite sample records cover 1200×900 desktop and 390×844 phone layouts, chart rendering, period switching, entry editing, dark appearance, single-category pies, and empty reports. Browser checks do not establish Android or Fedora device compatibility.
 
 ## Entry form revision 0.2.2 — 2026-09-13
 
