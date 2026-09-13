@@ -8,7 +8,6 @@ import {
   Download,
   History,
   Layers3,
-  LockKeyhole,
   Monitor,
   Play,
   Plus,
@@ -20,6 +19,7 @@ import {
   ChartNoAxesColumnIncreasing,
 } from "lucide-react";
 import { android, command, mobile } from "./api";
+import { TimeBars, CategoryPie } from "./charts";
 import type { Entry, Report, Snapshot, SyncStatus } from "./types";
 import {
   bounds,
@@ -598,69 +598,16 @@ export default function App() {
               </div>
             )}
             <section className="timeline" aria-label="Time entries">
-              {rows.map((r, i) => {
-                const gap = !r.entry && !r.timer,
-                  locked = r.entry && now >= r.entry.created + WEEK;
-                return (
-                  <div
-                    className={`timeline-row ${gap ? "gap" : ""} ${r.timer ? "live" : ""}`}
-                    key={r.entry?.id || `${r.start}-${i}`}
-                  >
-                    <div className="time-range">
-                      <span>{clock(r.start, zone)}</span>
-                      <span>
-                        {r.end === dayEnd
-                          ? "24:00"
-                          : r.timer
-                            ? "Now"
-                            : clock(r.end, zone)}
-                      </span>
-                    </div>
-                    <div className="timeline-line">
-                      <i />
-                    </div>
-                    <div className="row-description">
-                      <strong>
-                        {gap
-                          ? "Unrecorded"
-                          : r.timer
-                            ? names[data.timer!.category]
-                            : names[r.entry!.category]}
-                      </strong>
-                      {gap ? (
-                        <small>Gap</small>
-                      ) : r.timer ? (
-                        <small>Timer running</small>
-                      ) : (
-                        <small>
-                          {locked
-                            ? "Editing window ended"
-                            : "Recorded activity"}
-                        </small>
-                      )}
-                    </div>
-                    <span className="row-duration">
-                      {duration(r.end - r.start)}
-                    </span>
-                    {r.entry ? (
-                      <button
-                        className="row-action"
-                        disabled={!!locked}
-                        aria-label={
-                          locked
-                            ? "Entry locked"
-                            : `Edit ${names[r.entry.category]}`
-                        }
-                        onClick={() => setEditor(r.entry!)}
-                      >
-                        {locked ? <LockKeyhole size={14} /> : <span>Edit</span>}
-                      </button>
-                    ) : (
-                      <span className="row-action" />
-                    )}
-                  </div>
-                );
-              })}
+              <TimeBars
+                rows={rows}
+                start={dayStart}
+                end={dayEnd}
+                zone={zone}
+                now={now}
+                names={names}
+                timerCategory={data.timer?.category}
+                edit={setEditor}
+              />
               {!rows.length && (
                 <div className="empty-state">
                   <Clock3 size={28} />
@@ -697,28 +644,7 @@ export default function App() {
                 <span>Share of recorded time</span>
               </div>
               {stats.categories.length ? (
-                stats.categories.map((c, i) => (
-                  <div className="category-stat" key={c.id}>
-                    <div className="category-stat-top">
-                      <span>
-                        <i style={{ opacity: Math.max(0.4, 1 - i * 0.1) }} />
-                        {c.name}
-                      </span>
-                      <span className="stat-numbers">
-                        <b>{duration(c.duration)}</b>
-                        <small>{Math.round(c.share * 100)}%</small>
-                      </span>
-                    </div>
-                    <div className="bar-track">
-                      <div
-                        style={{
-                          width: `${c.share * 100}%`,
-                          opacity: Math.max(0.4, 1 - i * 0.1),
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))
+                <CategoryPie report={stats} />
               ) : (
                 <div className="empty-state">
                   <ChartNoAxesColumnIncreasing size={30} />

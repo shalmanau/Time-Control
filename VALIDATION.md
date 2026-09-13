@@ -1,5 +1,11 @@
 # Validation
 
+## Horizontal timelines and pie statistics 0.2.3 — 2026-09-13
+
+- Timeline entries use thick horizontal bars positioned on the day scale, with neutral gaps and stable category colors shared with statistics. Editable bars open the existing entry form.
+- Daily, weekly, and monthly statistics use a pie chart with category durations and percentages in a text legend.
+- Production frontend build and 15 frontend tests pass. Browser checks using isolated SQLite sample records cover 1200×900 desktop and 390×844 phone layouts, chart rendering, period switching, and entry editing. Browser checks do not establish Android or Fedora device compatibility.
+
 ## Entry form revision 0.2.2 — 2026-09-13
 
 - [Release v0.2.2](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.2) is published. [GitHub Actions run 34763257193](https://github.com/shalmanau/Time-Control/actions/runs/34763257193) passed all 45 checks and both signed platform builds. The public Android manifest/APK download and Linux asset signatures were verified; both endpoints return version 0.2.2 (Android code 2002).
