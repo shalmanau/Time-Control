@@ -1,11 +1,21 @@
 # Validation
 
+## Published version 0.2.1 — 2026-09-13
+
+- [GitHub Actions run 34761918753](https://github.com/shalmanau/Time-Control/actions/runs/34761918753) passed Linux, Android, and publication jobs. All 39 automated checks pass in CI. Vitest is restricted to `src` so Node's release tests run only with their own test runner.
+- [Release v0.2.1](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.1) is public with signed Linux and Android packages plus both update manifests. Repository signing secrets are configured.
+- Tested the public Android endpoint using the application's Rust updater: HTTPS redirects, manifest signature, APK checksum and download succeed; checking with the current version correctly returns no update. Published Android version code is 2001.
+- Downloaded the public Linux asset and verified its signature with the app's bundled public key; tampered package bytes are rejected. The published APK's signer matches the original 0.1.0 installation, and 16 KiB ZIP alignment validation passes.
+- The GitHub-built AppImage also launches on Mint, initializes SQLite in an isolated profile, and produces an empty startup log.
+- Physical Android installer approval, Fedora execution, and replacing/restarting a running user installation remain untested. No user records were accessed or altered by this release verification.
+
+
 ## Version 0.2.0 update support — 2026-09-13
 
 - 39 automated checks pass: 28 Rust core tests, 9 frontend tests, and 2 release-script tests. They cover HTTPS redirect restrictions, tampering, update dispatch on both platforms, Wi-Fi checks, failed downloads and retries, and version-specific signed release metadata.
 - Native Linux `cargo check` and release build pass. The new signed AppImage launches on Mint with an isolated data profile and initializes SQLite; its startup log is empty. The bundled public key verifies its signature; modifying its bytes fails signature verification.
 - Android release APK builds (ARM64, version 0.2.0, version code 2000). `apksigner verify` and 16 KiB ZIP alignment checks pass. Its signing-certificate SHA-256 matches the earlier 0.1.0 APK. This is a release-mode build using the existing personal-test signing identity.
-- `actionlint` validates the release workflow. Both signed platform builds must succeed before publication. GitHub Actions has not run this workflow yet: GitHub CLI authentication and repository-secret setup are still pending.
+- `actionlint` validates the release workflow. Both signed platform builds must succeed before publication. At that local validation stage, GitHub authentication and repository-secret setup were pending; the published 0.2.1 results above supersede that limitation.
 - No Android phone or Fedora environment was available. Real-device installation approval/cancellation and full update/restart from a published GitHub release are not established by these local checks.
 - No application data schema or storage path changed. Existing records are not touched by the build or release workflow.
 

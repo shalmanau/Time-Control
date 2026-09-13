@@ -1,10 +1,10 @@
 # App updates
 
-Time Ledger 0.2.0 adds **Settings → App updates → Check for updates → Update to …** on Linux and Android. The default source is `shalmanau/Time-Control` on GitHub Releases. No GitHub account is needed in the installed app.
+Time Ledger 0.2.1 includes **Settings → App updates → Check for updates → Update to …** on Linux and Android. The default source is `shalmanau/Time-Control` on GitHub Releases. No GitHub account is needed in the installed app.
 
 - Linux: run the AppImage from a folder you can write to. The updater verifies the signature, replaces the AppImage, and restarts. An unpackaged development executable cannot replace an AppImage.
 - Android: checking and downloading require Wi-Fi. Automatic checks happen on opening/resuming at most once daily; the button can check at any time. Android asks you to approve installation. If prompted, allow installs from Time Ledger, return to the app, and click Update again. Cancellation leaves the existing app and records intact.
-- Existing 0.1.0 installations need a one-time manual upgrade to 0.2.0, which adds the GitHub download support. Install the APK over the existing app; do not uninstall it. Replace the old AppImage with the new one. The application identifier and SQLite location are unchanged.
+- Existing 0.1.0 installations need a one-time manual upgrade to 0.2.1 or newer, which adds the GitHub download support. Install the APK over the existing app; do not uninstall it. Replace the old AppImage with the new one. The application identifier and SQLite location are unchanged.
 
 ## One-time GitHub setup on this machine
 
@@ -22,13 +22,7 @@ The setup script sends private values directly to GitHub Actions secrets through
 
 The script configures `TAURI_SIGNING_PRIVATE_KEY`, `ANDROID_MANIFEST_PRIVATE_KEY`, `ANDROID_KEYSTORE_BASE64`, `LEDGER_KEY_ALIAS`, `LEDGER_STORE_PASSWORD`, and `LEDGER_KEY_PASSWORD`. The generated desktop key has no passphrase; if you later use an encrypted key, also set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in GitHub secrets. Android signing currently uses the existing personal-test keystore. Do not replace it casually: a different certificate cannot update an installed APK under the same application ID.
 
-After reviewing and committing the source changes, push them and create the first release tag:
-
-```bash
-git push origin HEAD
-git tag v0.2.0
-git push origin v0.2.0
-```
+The signing secrets are configured for `shalmanau/Time-Control`, and [v0.2.1 is published](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.1). Devices already running the locally supplied 0.2.0 can receive it through the Update button. Older 0.1.0 installations need the one-time manual upgrade described above.
 
 GitHub Actions → Release builds the signed AppImage and ARM64 APK, runs checks, and publishes only when both builds succeed. Each release contains `latest.json` for Linux and `android.json` for Android, with version-specific package URLs. Interrupted publication can be rerun while the release is still a draft; an already published release is never overwritten.
 
