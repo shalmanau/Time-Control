@@ -191,7 +191,7 @@ nav button.selected {
   padding: 55px 6.5% 30px;
   width: 100%;
   max-width: 1200px;
-  margin: auto;
+  margin: 0 auto;
   align-self: start;
 }
 .page-header {
@@ -1213,90 +1213,118 @@ button svg {
 .time-bar-axis span:last-child {
   transform: translateX(-100%);
 }
-.time-bar-row {
-  display: block;
-  width: 100%;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  padding: 12px 0;
-  margin: 0;
-  text-align: left;
-  white-space: normal;
-  color: var(--text);
-}
-button.time-bar-row:hover {
-  background: var(--accent-soft);
-}
-button.time-bar-row:disabled {
-  opacity: 1;
-  cursor: default;
-}
-.time-bar-heading {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  margin-bottom: 9px;
-  font-size: 12px;
-}
-.time-bar-name {
-  font-weight: 550;
-  overflow-wrap: anywhere;
-  min-width: 0;
-}
-.time-bar-name small {
-  font-weight: 400;
-  color: var(--muted);
-}
-.time-bar-details {
-  display: flex;
-  gap: 14px;
-  margin-left: auto;
-  white-space: nowrap;
-  color: var(--muted);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-.time-bar-details b {
-  color: var(--text);
-  font-weight: 500;
-}
-.time-bar-action {
-  display: inline-flex;
-  width: 26px;
-  flex-shrink: 0;
-  font-size: 10px;
-  color: var(--muted);
-}
-.time-bar-track {
-  display: block;
-  height: 34px;
+/* One shared day track; individual entries remain keyboard accessible. */
+.day-track {
+  height: 48px;
   position: relative;
-  overflow: hidden;
-  border-radius: 4px;
+  border-radius: 5px;
   background: var(--side);
+  overflow: hidden;
 }
-.time-bar-fill {
-  display: block;
+.day-segment {
   position: absolute;
   top: 0;
   bottom: 0;
-  min-width: 3px;
-  border-radius: 4px;
+  display: block;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: inset -1px 0 var(--bg);
 }
-.is-gap .time-bar-name {
-  color: var(--muted);
-  font-weight: 400;
+.day-segment:disabled {
+  opacity: 1;
 }
-.is-gap .time-bar-fill {
+button.day-segment:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+button.day-segment:focus-visible {
+  outline-offset: -3px;
+  outline: 3px solid var(--text);
+  z-index: 1;
+}
+.day-segment.is-gap {
   background: var(--border);
 }
-.time-bar-fill.is-running {
+.day-segment.is-running {
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 8px,
-    #ffffff20 8px 16px
+    #ffffff30 8px 16px
   );
+}
+.timeline-legend {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  font-size: 12px;
+}
+.timeline-legend li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.timeline-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.log-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.log-controls > button {
+  flex-shrink: 0;
+}
+.log-controls select {
+  flex: 1;
+  min-width: 0;
+  max-width: 220px;
+  margin-left: auto;
+  text-overflow: ellipsis;
+}
+.active-category {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.timer-elapsed {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.page-header {
+  margin-bottom: 24px;
+}
+@media (max-width: 600px) {
+  .log-controls {
+    gap: 8px;
+  }
+  .log-controls > button,
+  .log-controls select {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .timer-elapsed {
+    font-size: 12px;
+  }
+  .active-category {
+    font-size: 12px;
+  }
 }
 .pie-breakdown {
   display: grid;
@@ -1358,20 +1386,5 @@ button.time-bar-row:disabled {
   .category-pie {
     max-width: 270px;
     margin: auto;
-  }
-  .time-bar-heading {
-    flex-wrap: wrap;
-    column-gap: 8px;
-    row-gap: 4px;
-  }
-  .time-bar-name {
-    flex: 1;
-  }
-  .time-bar-details {
-    flex: none;
-    gap: 10px;
-  }
-  .time-bar-action {
-    display: none;
   }
 }

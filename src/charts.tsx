@@ -1,4 +1,3 @@
-import { LockKeyhole } from "lucide-react";
 import type { Entry, Report } from "./types";
 import { clock, duration, local } from "./time";
 
@@ -49,64 +48,65 @@ export function TimeBars({
           </span>
         ))}
       </div>
-      {rows.map((row, index) => {
-        const category =
-          row.entry?.category || (row.timer ? timerCategory : undefined);
-        const name = category ? names[category] : "Unrecorded";
-        const locked =
-          !!row.entry && now >= row.entry.created + 7 * 24 * 3600000;
-        const endLabel =
-          row.end === end ? "24:00" : row.timer ? "Now" : clock(row.end, zone);
-        const content = (
-          <>
-            <span className="time-bar-heading">
-              <span className="time-bar-name">
-                {name}
-                {row.timer && <small> · Running</small>}
-              </span>
-              <span className="time-bar-details">
-                {clock(row.start, zone)}–{endLabel}{" "}
-                <b>{duration(row.end - row.start)}</b>
-              </span>
-              {row.entry && (
-                <span className="time-bar-action">
-                  {locked ? <LockKeyhole size={13} /> : "Edit"}
-                </span>
-              )}
-            </span>
-            <span className="time-bar-track" aria-hidden="true">
-              <span
-                className={`time-bar-fill ${row.timer ? "is-running" : ""}`}
-                style={{
-                  left: `${position(row.start)}%`,
-                  width: `${position(row.end) - position(row.start)}%`,
-                  backgroundColor: category
-                    ? categoryColor(category)
-                    : undefined,
-                }}
-              />
-            </span>
-          </>
-        );
-        return row.entry ? (
-          <button
-            key={row.entry.id}
-            className="time-bar-row"
-            disabled={locked}
-            aria-label={`${locked ? "Locked entry" : "Edit"} ${name}, ${clock(row.start, zone)} to ${endLabel}, ${duration(row.end - row.start)}`}
-            onClick={() => edit(row.entry!)}
-          >
-            {content}
-          </button>
-        ) : (
-          <div
-            key={`${row.start}-${index}`}
-            className={`time-bar-row ${row.timer ? "is-live" : "is-gap"}`}
-          >
-            {content}
-          </div>
-        );
-      })}
+      <div className="day-track">
+        {rows.map((row, index) => {
+          const category =
+            row.entry?.category || (row.timer ? timerCategory : undefined);
+          const name = category ? names[category] : "Gap";
+          const locked =
+            !!row.entry && now >= row.entry.created + 7 * 24 * 3600000;
+          const endLabel =
+            row.end === end
+              ? "24:00"
+              : row.timer
+                ? "Now"
+                : clock(row.end, zone);
+          const label = `${name}, ${clock(row.start, zone)}–${endLabel}, ${duration(row.end - row.start)}`;
+          const style = {
+            left: `${position(row.start)}%`,
+            width: `${position(row.end) - position(row.start)}%`,
+            backgroundColor: category ? categoryColor(category) : undefined,
+          };
+          return row.entry ? (
+            <button
+              key={row.entry.id}
+              className="day-segment"
+              style={style}
+              disabled={locked}
+              aria-label={`${locked ? "Locked" : "Edit"} ${label}`}
+              title={label}
+              onClick={() => edit(row.entry!)}
+            />
+          ) : (
+            <span
+              key={`${row.start}-${index}`}
+              className={`day-segment ${row.timer ? "is-running" : "is-gap"}`}
+              style={style}
+              aria-label={label}
+              title={label}
+            />
+          );
+        })}
+      </div>
+      <ul className="timeline-legend" aria-label="Timeline categories">
+        {[
+          ...new Set(
+            rows.flatMap((row) => {
+              const category =
+                row.entry?.category || (row.timer ? timerCategory : undefined);
+              return category ? [category] : [];
+            }),
+          ),
+        ].map((category) => (
+          <li key={category}>
+            <i
+              style={{ background: categoryColor(category) }}
+              aria-hidden="true"
+            />
+            {names[category]}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -123,10 +123,7 @@ export function CategoryPie({ report }: { report: Report }) {
         role="img"
         aria-label="Category shares of recorded time"
       >
-        <title>
-          Recorded time by category. Exact durations and percentages are listed
-          in the legend.
-        </title>
+        <title>Recorded time by category</title>
         {categories.map((c) => {
           const from = (accumulated / total) * 2 * Math.PI - Math.PI / 2;
           accumulated += c.duration;

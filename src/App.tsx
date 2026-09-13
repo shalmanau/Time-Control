@@ -7,13 +7,9 @@ import {
   Clock3,
   Download,
   History,
-  Layers3,
   Monitor,
-  Play,
-  Plus,
   Settings2,
   Smartphone,
-  Square,
   Wifi,
   X,
   ChartNoAxesColumnIncreasing,
@@ -327,15 +323,6 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-bottom">
-          <span className="status-dot" />
-          {data.group.members.length === 1
-            ? "On this device"
-            : sync?.last_sync
-              ? "Devices synchronized"
-              : "Saved on this device"}
-          <small>Your time, kept locally.</small>
-        </div>
       </aside>
       <main className="workspace">
         {error && (
@@ -402,35 +389,7 @@ export default function App() {
         {page !== "settings" && (
           <>
             <header className="page-header">
-              <div>
-                <p className="eyebrow">
-                  {page === "log" ? "DAILY LOG" : "YOUR TIME"}
-                </p>
-                <h1>
-                  {page === "log"
-                    ? isToday
-                      ? "Today"
-                      : dateLabel(date)
-                    : "Statistics"}
-                </h1>
-                <p className="subheading">
-                  {page === "log"
-                    ? isToday
-                      ? dateLabel(date)
-                      : "Your recorded activities"
-                    : "A simple breakdown of where your time goes."}
-                </p>
-              </div>
-              {page === "log" && (
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() => setEditor("new")}
-                >
-                  <Plus size={18} />
-                  Add entry
-                </button>
-              )}
+              <h1>{page === "log" ? "Log" : "Statistics"}</h1>
             </header>
             <div className="date-toolbar">
               {page === "statistics" ? (
@@ -450,9 +409,7 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-              ) : (
-                <span className="section-label">Timeline</span>
-              )}
+              ) : null}
               <div className="date-controls">
                 <button
                   className="icon-button"
@@ -471,11 +428,7 @@ export default function App() {
                 </button>
                 <label className="date-picker">
                   <span>
-                    {page === "statistics"
-                      ? dateLabel(date, period)
-                      : isToday
-                        ? "Today"
-                        : date}
+                    {dateLabel(date, page === "statistics" ? period : "day")}
                   </span>
                   <input
                     type="date"
@@ -516,73 +469,75 @@ export default function App() {
         )}
         {page === "log" && (
           <>
-            {!data.categories.length ? (
-              <section className="first-category">
-                <Layers3 size={26} />
-                <h2>Add your first activity</h2>
-                <p>
-                  Create a category as you add an entry. You can reuse it next
-                  time.
-                </p>
-                <button disabled={busy} onClick={() => setEditor("new")}>
-                  Add entry
-                </button>
-              </section>
-            ) : (
-              <section
-                className={`timer-bar ${data.timer ? "running" : ""}`}
-                aria-label="Timer"
+            <section
+              className="log-controls"
+              aria-label="Entry and timer controls"
+            >
+              <button
+                className="primary"
+                disabled={busy}
+                onClick={() => setEditor("new")}
               >
-                <div className="timer-symbol">
-                  <Clock3 size={20} />
-                </div>
-                {data.timer ? (
-                  <>
-                    <div className="timer-label">
-                      <span className="running-label">
-                        <i />
-                        Running
-                      </span>
-                      <strong>{names[data.timer.category]}</strong>
-                    </div>
-                    <output className="elapsed">
-                      {duration(now - data.timer.start, true)}
-                    </output>
-                    <button
-                      disabled={busy}
-                      onClick={() => void act(() => command("stop_timer"))}
-                    >
-                      <Square size={14} fill="currentColor" />
-                      Stop
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <select
-                      aria-label="Timer category"
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                    >
-                      {data.categories.map((c) => (
-                        <option value={c.id} key={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="timer-hint">Ready when you are</span>
-                    <button
-                      disabled={busy || !category}
-                      onClick={() =>
-                        void act(() => command("start_timer", { category }))
-                      }
-                    >
-                      <Play size={15} fill="currentColor" />
-                      Start timer
-                    </button>
-                  </>
-                )}
-              </section>
-            )}
+                Add entry
+              </button>
+              {data.timer ? (
+                <>
+                  <strong
+                    className="active-category"
+                    title={names[data.timer.category]}
+                  >
+                    {names[data.timer.category]}
+                  </strong>
+                  <output className="timer-elapsed" aria-label="Elapsed time">
+                    {duration(now - data.timer.start, true)}
+                  </output>
+                  <button
+                    disabled={busy}
+                    onClick={() => void act(() => command("stop_timer"))}
+                  >
+                    Stop
+                  </button>
+                </>
+              ) : (
+                <>
+                  <select
+                    aria-label="Timer category"
+                    value={category}
+                    disabled={!data.categories.length}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {!data.categories.length && (
+                      <option value="">Category</option>
+                    )}
+                    {data.categories.map((c) => (
+                      <option value={c.id} key={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={busy || !category}
+                    onClick={() =>
+                      void act(() => command("start_timer", { category }))
+                    }
+                  >
+                    Start timer
+                  </button>
+                </>
+              )}
+            </section>
+            <section className="timeline" aria-label="Time entries">
+              <TimeBars
+                rows={rows}
+                start={dayStart}
+                end={dayEnd}
+                zone={zone}
+                now={now}
+                names={names}
+                timerCategory={data.timer?.category}
+                edit={setEditor}
+              />
+            </section>
             {stats && (
               <div className="day-summary">
                 <span>
@@ -597,29 +552,6 @@ export default function App() {
                 </span>
               </div>
             )}
-            <section className="timeline" aria-label="Time entries">
-              <TimeBars
-                rows={rows}
-                start={dayStart}
-                end={dayEnd}
-                zone={zone}
-                now={now}
-                names={names}
-                timerCategory={data.timer?.category}
-                edit={setEditor}
-              />
-              {!rows.length && (
-                <div className="empty-state">
-                  <Clock3 size={28} />
-                  <h2>No time recorded</h2>
-                  <p>Add an activity or start a timer.</p>
-                </div>
-              )}
-            </section>
-            <footer className="log-footer">
-              <span>Times shown in {zone.replaceAll("_", " ")}</span>
-              <span>Entries stay editable for 7 days.</span>
-            </footer>
           </>
         )}
         {page === "statistics" && stats && (
@@ -641,7 +573,6 @@ export default function App() {
             <section className="breakdown">
               <div className="table-heading">
                 <h2>By category</h2>
-                <span>Share of recorded time</span>
               </div>
               {stats.categories.length ? (
                 <CategoryPie report={stats} />
@@ -649,40 +580,21 @@ export default function App() {
                 <div className="empty-state">
                   <ChartNoAxesColumnIncreasing size={30} />
                   <h2>No entries in this period</h2>
-                  <p>Your category breakdown will appear here.</p>
                 </div>
               )}
             </section>
-            <footer className="log-footer">
-              <span>
-                {stats.provisional
-                  ? "Includes elapsed time from the running timer."
-                  : "Only recorded activities count toward category percentages."}
-              </span>
-              <span>
-                {dateAt(stats.end, zone) === today
-                  ? "Current period ends now."
-                  : ""}
-              </span>
-            </footer>
           </>
         )}
         {page === "settings" && (
           <>
             <header className="page-header">
               <div>
-                <p className="eyebrow">PREFERENCES</p>
                 <h1>Settings</h1>
-                <p className="subheading">Connected devices and app updates.</p>
               </div>
             </header>
             <section className="settings-section">
               <div className="section-intro">
                 <h2>Device group</h2>
-                <p>
-                  Open the app on the same Wi-Fi to synchronize. Newer members
-                  have higher conflict priority.
-                </p>
               </div>
               <div className="group-caption">
                 <strong>{data.group.name}</strong>
@@ -742,7 +654,6 @@ export default function App() {
                           <Monitor size={20} />
                           <div>
                             <strong>{p.name}</strong>
-                            <span>Available on this network</span>
                           </div>
                           <button
                             disabled={busy || !!sync.joining_code}
@@ -757,7 +668,7 @@ export default function App() {
                         </div>
                       ))
                   ) : (
-                    <p>Open Time Ledger on another device to find its group.</p>
+                    <p>No nearby groups</p>
                   )}
                 </div>
               )}
@@ -765,10 +676,7 @@ export default function App() {
             <section className="settings-section">
               <div className="section-intro">
                 <h2>App updates</h2>
-                <p>
-                  Time Ledger {version}
-                  {android ? " · Checks on Wi-Fi while the app is open." : ""}
-                </p>
+                <p>Version {version}</p>
               </div>
               {android && (
                 <UpdateSettings
@@ -808,9 +716,6 @@ export default function App() {
                 </p>
               )}
             </section>
-            <footer className="log-footer">
-              <span>Stored locally · No tracking or account</span>
-            </footer>
           </>
         )}
       </main>
@@ -1001,7 +906,6 @@ function EntryEditor({
       >
         <div className="dialog-heading">
           <div>
-            <p className="eyebrow">TIME ENTRY</p>
             <h2>{entry ? "Edit activity" : "Add an activity"}</h2>
           </div>
           <button
@@ -1115,12 +1019,7 @@ function EntryEditor({
             {timeError}
           </p>
         )}
-        <p className="field-hint">
-          {zone.replaceAll("_", " ")} ·{" "}
-          {entry
-            ? "Editing does not reset the seven-day window."
-            : "You can edit or delete this entry for seven days."}
-        </p>
+
         {(error || formError) && (
           <p role="alert" className="form-error">
             {error || formError}

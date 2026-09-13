@@ -1,5 +1,12 @@
 # Validation
 
+## Minimal single-bar log 0.2.4 — 2026-09-13
+
+- One horizontal day bar contains all activity segments and gaps; editable segments open the entry form. A compact category legend replaces repeated row labels.
+- Add entry, category selection, and Start timer share one row above the bar. The running timer retains this layout with elapsed time and Stop.
+- Removed descriptive subtitles, onboarding paragraphs, and helper footnotes from Log, Statistics, Settings, and the entry form. Field labels, duration, errors, and actionable sync/update status remain.
+- Production build and 15 frontend tests pass. Browser checks use an isolated SQLite profile and cover desktop/phone layouts, bar editing, timer start/stop, and a 320px running-control row without overflow. Android and Fedora device validation remain unavailable.
+
 ## Horizontal timelines and pie statistics 0.2.3 — 2026-09-13
 
 - [Release v0.2.3](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.3) is public. [GitHub Actions run 34766030542](https://github.com/shalmanau/Time-Control/actions/runs/34766030542) passed all 45 checks and both signed platform builds. Public update downloads and signatures were verified for both platforms; Android version code is 2003. The published AppImage also launched on Mint with an isolated SQLite profile and an empty startup log.
