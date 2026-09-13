@@ -2,6 +2,8 @@
 
 ## Entry form revision 0.2.2 — 2026-09-13
 
+- [Release v0.2.2](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.2) is published. [GitHub Actions run 34763257193](https://github.com/shalmanau/Time-Control/actions/runs/34763257193) passed all 45 checks and both signed platform builds. The public Android manifest/APK download and Linux asset signatures were verified; both endpoints return version 0.2.2 (Android code 2002).
+
 - The category selector now lists saved categories plus “New category”; creation is in the entry dialog and no longer in Settings. The first entry can be opened before any categories exist.
 - Separate day and time controls infer the following day when the end clock is earlier. The form displays elapsed duration and the end date for overnight spans. Existing multi-day entries retain their explicit end day; precise timer timestamps remain unchanged on category-only edits.
 - Frontend build and native Linux type checking pass. All 15 frontend and 2 release-script tests pass, including six new date/entry cases covering midnight, year boundaries, equal times, DST, short timers, and multi-day entries.
