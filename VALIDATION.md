@@ -2,6 +2,8 @@
 
 ## Minimal single-bar log 0.2.4 — 2026-09-13
 
+- [Release v0.2.4](https://github.com/shalmanau/Time-Control/releases/tag/v0.2.4) is public. [GitHub Actions run 34769227817](https://github.com/shalmanau/Time-Control/actions/runs/34769227817) passed all 45 automated checks and both signed platform builds. Public Android and Linux update downloads and signatures were verified; Android version code is 2004.
+
 - One horizontal day bar contains all activity segments and gaps; editable segments open the entry form. A compact category legend replaces repeated row labels.
 - Add entry, category selection, and Start timer share one row above the bar. The running timer retains this layout with elapsed time and Stop.
 - Removed descriptive subtitles, onboarding paragraphs, and helper footnotes from Log, Statistics, Settings, and the entry form. Field labels, duration, errors, and actionable sync/update status remain.
