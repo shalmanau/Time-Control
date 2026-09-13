@@ -4,12 +4,12 @@ A minimal, offline time-accounting app for Linux and Android. Record activities 
 
 ## Use
 
-1. Create a category in the Log or Settings view.
-2. Add an activity with its start and end times, or choose a category and start a timer.
+1. Open Add entry, then choose an existing category or New category. The inline picker also lets you edit category colors.
+2. Choose the day and use the custom start/end clocks. An earlier end time means the following day; the bar preview shows the proposed span. Alternatively, choose a category in the Log and start a timer.
 3. Open Statistics for daily, Monday–Sunday weekly, and calendar-month totals.
 4. To connect devices, open both apps on the same local network. On the device joining, go to Settings → Nearby groups → Request to join. Compare the six-digit code and approve on the existing member.
 
-Each installation starts with its own one-device group. It can join another group while it has no other members. Existing local entries travel with it. Any existing member can approve new devices; more recently joined members have higher conflict priority. Group removal and switching an established multi-device group are outside this version.
+Each installation starts with its own one-device group. It can join another group while it has no other members. Existing local entries travel with it. Any existing member can approve new devices; new members start with the highest conflict priority. Use the up/down arrows in Settings to change this order. Group removal and switching an established multi-device group are outside this version.
 
 The timer keeps its start timestamp when the app closes; it does not need a background tracking process. A synchronized device can stop it. Offline devices can temporarily have competing activities: synchronization resolves those automatically.
 
@@ -19,13 +19,15 @@ The timer keeps its start timestamp when the app closes; it does not need a back
 - Entries cannot overlap, have zero/negative duration, or end in the future. Adjacent entries and overnight activities are supported.
 - Editing and deletion end exactly seven days after **entry creation**, not after the activity occurred. Editing never extends this period. Stopping a timer creates its completed entry at that moment.
 - All devices use the group creator’s timezone. Local times that are ambiguous or nonexistent during clock changes are rejected with an explanation. Reporting uses actual elapsed time, including 23- and 25-hour days.
-- Gaps fill unrecorded elapsed time in the selected day or period. Category percentages use recorded time as their denominator. Running timer time is provisional.
+- Unmarked time fills unrecorded elapsed time in the selected day or period and appears in the log and statistics pie. Pie percentages include both recorded and unmarked elapsed time; future time is excluded. Running timer time is provisional.
 
 ## Synchronization
 
+Update every group device to version 0.3.0 or later to sync editable priorities and colors. Existing records upgrade in place; older app versions cannot read the new signed setting operations.
+
 The Rust core uses SQLite transactions, signed operations with vector clocks, and signed group membership. Noise XX encrypts device connections; the initial verification code binds the pairing handshake. Known members authenticate by their pinned Noise keys and membership certificates.
 
-Independent changes merge. Causally later changes supersede earlier ones regardless of device priority. Concurrent changes use joining order, then device ID for deterministic ties. Concurrent joins use a logical sequence and device-ID order. Overlapping records are considered in priority order; losers remain in the operation history and are excluded while they conflict. Deletion markers prevent stale replicas from resurrecting deleted entries.
+Independent changes merge. Causally later changes supersede earlier ones regardless of device priority. Concurrent activity and color changes use the saved device priority. Without a saved order, joining order and device ID determine priority. Concurrent edits to the priority setting itself use causal ordering, then immutable joining order and operation ID to avoid circular precedence. Concurrent joins use a logical sequence and device-ID order. Overlapping records are considered in priority order; losers remain in the operation history and are excluded while they conflict. Deletion markers prevent stale replicas from resurrecting deleted entries.
 
 Discovery uses mDNS on Linux and Android NSD. Apps synchronize approximately every ten seconds while visible, and reconnect after reopening. No background sync service is installed. Router client isolation, blocked multicast, VPN routing, or a firewall can prevent discovery. The app uses UDP 5353 for discovery and an advertised dynamic TCP port; it does not modify firewall settings. IPv4 private networks and IPv6 local addresses are supported by the transport; Linux discovery currently selects IPv4 addresses.
 

@@ -2,6 +2,8 @@
 
 ## Editable priorities, colors, and entry controls 0.3.0 — 2026-09-13
 
+- [Release v0.3.0](https://github.com/shalmanau/Time-Control/releases/tag/v0.3.0) is public. [GitHub Actions run 34771239220](https://github.com/shalmanau/Time-Control/actions/runs/34771239220) passed all 55 checks and both signed builds. Public update downloads/signatures verify on both platforms; Android version code is 3000. The published AppImage starts on Mint and creates an isolated SQLite profile with an empty startup log.
+
 - Device priority is a signed replicated setting, separate from signed admission records. Settings arrows reorder devices; current priority controls concurrent entry/color/timer conflicts and overlap selection. Concurrent priority-setting operations use causal ordering and immutable admission priority as a deterministic tie-breaker; new members start above the saved ordering.
 - Categories receive persisted random palette colors; color edits synchronize. Existing signed category operations and databases retain compatibility on upgrade, with stable fallback colors until edited. The new operation types require every syncing device to run 0.3.0 or later; older apps cannot read these operations.
 - Log and statistics explicitly include Unmarked time. The pie includes unmarked duration and computes shares against the entire elapsed reporting period.
