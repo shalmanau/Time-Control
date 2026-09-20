@@ -65,6 +65,16 @@ The bridge is bound to loopback and supports entry/category/statistics checks. A
 
 ## Build packages
 
+### Fedora: blank AppImage window
+
+If the window is blank and the terminal reports `Could not create default EGL display: EGL_BAD_PARAMETER`, launch with Fedora's system Wayland client library:
+
+```sh
+./scripts/run-appimage-fedora.sh /absolute/path/to/Time-Ledger.AppImage
+```
+
+This avoids a conflict between the AppImage's bundled Wayland client and the host graphics stack. The launcher applies the workaround only to this app, preserves existing `LD_PRELOAD` entries, and leaves the AppImage and application data intact. On Fedora 44, disabling WebKit DMA-BUF or compositing alone did not resolve the crash; loading `/usr/lib64/libwayland-client.so.0` did.
+
 Linux:
 
 ```sh
